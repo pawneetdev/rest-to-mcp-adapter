@@ -1,23 +1,27 @@
 """
-OpenAPI/Swagger specification loader with LangChain integration.
+OpenAPI/Swagger specification loader with URL and file path support.
 
 This loader handles:
 - OpenAPI 3.x specifications
 - Swagger 2.x specifications
 - Both JSON and YAML formats
+- Loading from URLs, file paths, or raw content
 - Partial/malformed specs (with graceful degradation)
 
 The loader leverages LangChain's OpenAPISpec utility for parsing and validation
 when available, with a fallback to manual parsing for flexibility.
 
 Design notes:
+- Supports URLs, file paths, and raw content
 - Prefers LangChain utilities for standardization
 - Resilient to missing or malformed fields
 - Returns structured dict ready for normalization
 """
 
 import json
+from pathlib import Path
 from typing import Any, Dict, Union
+from urllib.parse import urlparse
 
 import yaml
 
@@ -29,8 +33,13 @@ class OpenAPILoader(BaseLoader):
     Loader for OpenAPI and Swagger specifications.
 
     This loader can parse both OpenAPI 3.x and Swagger 2.x specifications
-    in JSON or YAML format. It uses LangChain's OpenAPISpec when available
-    for robust parsing, but can also handle specs manually.
+    in JSON or YAML format. It supports loading from:
+    - URLs (http/https)
+    - File paths (local filesystem)
+    - Raw content strings
+
+    It uses LangChain's OpenAPISpec when available for robust parsing,
+    but can also handle specs manually.
 
     The loader is designed to be resilient:
     - Handles partial specs
@@ -38,10 +47,17 @@ class OpenAPILoader(BaseLoader):
     - Validates required fields while being lenient with optional ones
 
     Examples:
+        >>> # Load from URL
         >>> loader = OpenAPILoader()
-        >>> spec = loader.load(openapi_yaml_content)
+        >>> spec = loader.load_from_url("https://api.example.com/openapi.json")
         >>> print(spec.keys())
         dict_keys(['openapi', 'info', 'paths', ...])
+
+        >>> # Load from file path
+        >>> spec = loader.load_from_file("./specs/api.yaml")
+
+        >>> # Load from raw content
+        >>> spec = loader.load(openapi_yaml_content)
 
         >>> # With strict validation
         >>> loader = OpenAPILoader(strict=True)
@@ -59,12 +75,138 @@ class OpenAPILoader(BaseLoader):
         self.strict = strict
         self.use_langchain = use_langchain
 
-    def load(self, content: str) -> Dict[str, Any]:
+    def load_from_url(self, url: str) -> Dict[str, Any]:
         """
-        Load and parse OpenAPI/Swagger specification.
+        Load OpenAPI spec from a URL.
 
         Args:
-            content: OpenAPI spec as JSON or YAML string
+            url: URL to the OpenAPI specification (JSON or YAML)
+
+        Returns:
+            Parsed specification as a dictionary
+
+        Raises:
+            InvalidFormatError: If URL is invalid or content cannot be fetched
+            ValueError: If URL scheme is not http/https
+
+        Examples:
+            >>> loader = OpenAPILoader()
+            >>> spec = loader.load_from_url("https://api.example.com/openapi.json")
+        """
+        # Validate URL
+        parsed = urlparse(url)
+        if not parsed.scheme in ["http", "https"]:
+            raise ValueError(f"Invalid URL scheme: {parsed.scheme}. Use http or https.")
+
+        if not parsed.netloc:
+            raise ValueError(f"Invalid URL: {url}")
+
+        # Fetch content
+        try:
+            import requests
+
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
+            content = response.text
+
+        except ImportError:
+            raise InvalidFormatError(
+                "requests library not available. Install with: uv add requests"
+            )
+        except requests.RequestException as e:
+            raise InvalidFormatError(f"Failed to fetch URL {url}: {e}")
+
+        # Parse and return
+        return self.load(content)
+
+    def load_from_file(self, file_path: Union[str, Path]) -> Dict[str, Any]:
+        """
+        Load OpenAPI spec from a file path.
+
+        Args:
+            file_path: Path to the OpenAPI specification file
+
+        Returns:
+            Parsed specification as a dictionary
+
+        Raises:
+            InvalidFormatError: If file cannot be read
+            FileNotFoundError: If file does not exist
+
+        Examples:
+            >>> loader = OpenAPILoader()
+            >>> spec = loader.load_from_file("./api/openapi.yaml")
+            >>> spec = loader.load_from_file(Path("specs/api.json"))
+        """
+        file_path = Path(file_path)
+
+        if not file_path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        if not file_path.is_file():
+            raise InvalidFormatError(f"Not a file: {file_path}")
+
+        # Read file content
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+        except Exception as e:
+            raise InvalidFormatError(f"Failed to read file {file_path}: {e}")
+
+        # Parse and return
+        return self.load(content)
+
+    def load(self, content: str) -> Dict[str, Any]:
+        """
+        Load and parse OpenAPI/Swagger specification from raw content.
+
+        This method intelligently detects if the content is:
+        - A URL (starts with http:// or https://)
+        - A file path (exists on filesystem)
+        - Raw JSON/YAML content
+
+        Args:
+            content: OpenAPI spec as JSON/YAML string, URL, or file path
+
+        Returns:
+            Parsed specification as a dictionary
+
+        Raises:
+            InvalidFormatError: If content is not valid OpenAPI/Swagger
+            ValidationError: If strict=True and spec is malformed
+
+        Examples:
+            >>> loader = OpenAPILoader()
+            >>> # From URL
+            >>> spec = loader.load("https://api.example.com/openapi.json")
+            >>> # From file path
+            >>> spec = loader.load("./specs/api.yaml")
+            >>> # From raw content
+            >>> spec = loader.load('{"openapi": "3.0.0", ...}')
+        """
+        if not content or not content.strip():
+            raise InvalidFormatError("Content cannot be empty")
+
+        content_stripped = content.strip()
+
+        # Check if it's a URL
+        if content_stripped.startswith(("http://", "https://")):
+            return self.load_from_url(content_stripped)
+
+        # Check if it's a file path
+        file_path = Path(content_stripped)
+        if file_path.exists() and file_path.is_file():
+            return self.load_from_file(file_path)
+
+        # Otherwise, treat as raw content
+        return self._load_from_content(content)
+
+    def _load_from_content(self, content: str) -> Dict[str, Any]:
+        """
+        Internal method to load from raw content string.
+
+        Args:
+            content: Raw OpenAPI spec as JSON or YAML string
 
         Returns:
             Parsed specification as a dictionary
@@ -158,7 +300,7 @@ class OpenAPILoader(BaseLoader):
         except ImportError:
             raise ImportError(
                 "LangChain not available. Install with: "
-                "pip install langchain-community"
+                "uv add langchain-community"
             )
 
     def _validate_spec(self, spec_dict: Dict[str, Any]) -> None:

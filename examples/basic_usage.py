@@ -1,21 +1,21 @@
 """
-Basic usage examples for the REST → MCP Adapter ingestion pipeline.
+Basic usage examples for the REST → MCP Adapter ingestion layer.
 
 This script demonstrates how to use the Phase 1 ingestion layer
-to load and normalize API documentation.
+to load and normalize API documentation from various sources.
 
 Run this example:
     python examples/basic_usage.py
 """
 
-from adapter.pipeline import ingest_api_source
+from adapter.ingestion import OpenAPILoader, HTMLLoader
 from adapter.parsing import Normalizer
 
 
-def example_1_ingest_openapi():
-    """Example 1: Ingest an OpenAPI specification."""
+def example_1_openapi_from_raw_content():
+    """Example 1: Load OpenAPI from raw YAML content."""
     print("=" * 60)
-    print("Example 1: Ingesting OpenAPI Specification")
+    print("Example 1: OpenAPI from Raw YAML Content")
     print("=" * 60)
 
     # Sample OpenAPI spec (minimal example)
@@ -48,11 +48,6 @@ paths:
                 type: array
                 items:
                   type: object
-                  properties:
-                    id:
-                      type: integer
-                    name:
-                      type: string
   /users/{userId}:
     get:
       summary: Get a user by ID
@@ -66,53 +61,82 @@ paths:
       responses:
         '200':
           description: User object
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  id:
-                    type: integer
-                  name:
-                    type: string
-                  email:
-                    type: string
 """
 
-    # Ingest the OpenAPI spec
-    result = ingest_api_source(
-        source="sample_api.yaml",
-        raw_content=openapi_yaml,
-    )
+    # Load the OpenAPI spec
+    loader = OpenAPILoader()
+    spec_dict = loader.load(openapi_yaml)
 
-    print(f"\nIngestion Result: {result}")
-    print(f"Format detected: {result.format}")
-    print(f"Success: {result.success}")
+    print(f"\nLoaded OpenAPI specification")
+    print(f"API Title: {spec_dict.get('info', {}).get('title')}")
+    print(f"Paths found: {list(spec_dict.get('paths', {}).keys())}")
 
-    if result.success:
-        print(f"\nLoaded data type: {type(result.loaded_data)}")
-        print(f"API Title: {result.loaded_data.get('info', {}).get('title')}")
-        print(f"Paths found: {list(result.loaded_data.get('paths', {}).keys())}")
+    # Normalize to canonical format
+    normalizer = Normalizer()
+    endpoints = normalizer.normalize_openapi(spec_dict)
 
-        # Normalize to canonical format
-        normalizer = Normalizer()
-        endpoints = normalizer.normalize_openapi(result.loaded_data)
-
-        print(f"\n{len(endpoints)} endpoints normalized:")
-        for endpoint in endpoints:
-            print(f"  - {endpoint.name}: {endpoint.method} {endpoint.path}")
+    print(f"\n{len(endpoints)} endpoints normalized:")
+    for endpoint in endpoints:
+        print(f"  - {endpoint.name}: {endpoint.method} {endpoint.path}")
+        if endpoint.parameters:
             print(f"    Parameters: {len(endpoint.parameters)}")
-            if endpoint.parameters:
-                for param in endpoint.parameters:
-                    print(f"      • {param.name} ({param.location}): {param.type}")
+            for param in endpoint.parameters[:2]:  # Show first 2
+                print(f"      • {param.name} ({param.location}): {param.type}")
 
     print()
 
 
-def example_2_ingest_html():
-    """Example 2: Ingest HTML documentation."""
+def example_2_openapi_from_url():
+    """Example 2: Load OpenAPI from a URL (if available)."""
     print("=" * 60)
-    print("Example 2: Ingesting HTML Documentation")
+    print("Example 2: OpenAPI from URL")
+    print("=" * 60)
+
+    # Example using a public OpenAPI spec URL
+    # Note: This requires internet connection
+    url = "https://petstore3.swagger.io/api/v3/openapi.json"
+
+    print(f"\nAttempting to load from: {url}")
+    print("(Requires internet connection)")
+
+    try:
+        loader = OpenAPILoader()
+        spec_dict = loader.load_from_url(url)
+
+        print(f"✓ Successfully loaded!")
+        print(f"API Title: {spec_dict.get('info', {}).get('title')}")
+        print(f"API Version: {spec_dict.get('info', {}).get('version')}")
+        print(f"Number of paths: {len(spec_dict.get('paths', {}))}")
+
+    except Exception as e:
+        print(f"✗ Failed to load (this is okay for the demo): {e}")
+
+    print()
+
+
+def example_3_openapi_from_file():
+    """Example 3: Load OpenAPI from a file path."""
+    print("=" * 60)
+    print("Example 3: OpenAPI from File Path")
+    print("=" * 60)
+
+    # This demonstrates the API for file loading
+    # In a real scenario, you'd have an actual file
+
+    print("\nFile loading API:")
+    print("  loader = OpenAPILoader()")
+    print("  spec = loader.load_from_file('./specs/api.yaml')")
+    print("  # or")
+    print("  spec = loader.load('./specs/api.yaml')")  # Auto-detects file
+    print("\nThe loader automatically detects URLs, file paths, or raw content!")
+
+    print()
+
+
+def example_4_html_from_raw_content():
+    """Example 4: Load HTML documentation from raw content."""
+    print("=" * 60)
+    print("Example 4: HTML from Raw Content")
     print("=" * 60)
 
     # Sample HTML API documentation
@@ -156,140 +180,129 @@ def example_2_ingest_html():
     <h2>POST /api/orders</h2>
     <p>Create a new order.</p>
 
-    <h3>Request Body</h3>
-    <pre>
-    {
-        "product_id": 123,
-        "quantity": 2
-    }
-    </pre>
-
     <footer>Copyright 2024 (will be removed)</footer>
 </body>
 </html>
 """
 
-    # Ingest the HTML documentation
-    result = ingest_api_source(
-        source="api_docs.html",
-        raw_content=html_content,
-    )
+    # Load and clean the HTML
+    loader = HTMLLoader()
+    clean_text = loader.load(html_content)
 
-    print(f"\nIngestion Result: {result}")
-    print(f"Format detected: {result.format}")
-    print(f"Success: {result.success}")
-
-    if result.success:
-        print(f"\nCleaned text preview (first 500 chars):")
-        print("-" * 60)
-        print(result.loaded_data[:500])
-        print("-" * 60)
-        print("\nNote: Scripts, styles, and navigation removed.")
-        print("This clean text is ready for LLM-based extraction (Phase 2).")
+    print(f"\nCleaned text preview (first 400 chars):")
+    print("-" * 60)
+    print(clean_text[:400])
+    print("-" * 60)
+    print("\nNote: Scripts, styles, nav, and footer removed.")
+    print("This clean text is ready for LLM-based extraction (Phase 2).")
 
     print()
 
 
-def example_3_format_detection():
-    """Example 3: Automatic format detection."""
+def example_5_html_from_url():
+    """Example 5: Load HTML documentation from a URL."""
     print("=" * 60)
-    print("Example 3: Automatic Format Detection")
+    print("Example 5: HTML from URL")
     print("=" * 60)
 
-    samples = [
-        ("OpenAPI JSON", '{"openapi": "3.0.0", "info": {"title": "Test"}}'),
-        ("OpenAPI YAML", "openapi: 3.0.0\ninfo:\n  title: Test"),
-        ("Swagger 2.0", '{"swagger": "2.0", "info": {"title": "Test"}}'),
-        ("HTML", "<html><head><title>API</title></head><body>Docs</body></html>"),
-        ("Unknown", "Just some random text"),
-    ]
+    # Example URL (replace with actual API docs URL)
+    url = "https://example.com/api-docs"
 
-    for label, content in samples:
-        result = ingest_api_source(
-            source=f"{label}_sample",
-            raw_content=content,
-        )
-        print(f"\n{label}:")
-        print(f"  Detected format: {result.format}")
-        print(f"  Success: {result.success}")
+    print(f"\nHTML loader URL API:")
+    print("  loader = HTMLLoader()")
+    print(f"  text = loader.load_from_url('{url}')")
+    print("  # or simply")
+    print(f"  text = loader.load('{url}')  # Auto-detects URL")
+    print("\nFuture Enhancement:")
+    print("  The loader can be extended to recursively crawl linked")
+    print("  documentation pages to discover all API endpoints.")
 
     print()
 
 
-def example_4_custom_configuration():
-    """Example 4: Using custom configuration."""
+def example_6_convenience_functions():
+    """Example 6: Using convenience functions."""
     print("=" * 60)
-    print("Example 4: Custom Configuration")
+    print("Example 6: Convenience Functions (Quick Prototyping)")
     print("=" * 60)
 
-    # Malformed OpenAPI spec (missing required fields)
-    malformed_spec = '{"paths": {"/test": {"get": {}}}}'
+    from adapter.pipeline import load_openapi, load_html
 
-    # Try with non-strict mode (default)
-    print("\nWith non-strict mode (lenient):")
-    result = ingest_api_source(
-        source="malformed.json",
-        raw_content=malformed_spec,
-        strict=False,
-    )
-    print(f"  Success: {result.success}")
-    if result.success:
-        print(f"  Loaded: {result.loaded_data.keys()}")
-
-    # Try with strict mode
-    print("\nWith strict mode:")
-    result = ingest_api_source(
-        source="malformed.json",
-        raw_content=malformed_spec,
-        strict=True,
-    )
-    print(f"  Success: {result.success}")
-    if not result.success:
-        print(f"  Error: {result.error}")
+    print("\nFor quick prototyping, use convenience functions:")
+    print()
+    print("  from adapter.pipeline import load_openapi, load_html")
+    print()
+    print("  # Load OpenAPI")
+    print("  spec = load_openapi('https://api.example.com/openapi.json')")
+    print("  spec = load_openapi('./specs/api.yaml')")
+    print("  spec = load_openapi(raw_yaml_content)")
+    print()
+    print("  # Load HTML")
+    print("  text = load_html('https://docs.example.com/api')")
+    print("  text = load_html(raw_html_content)")
+    print()
+    print("For production code, use the loader classes directly:")
+    print("  from adapter.ingestion import OpenAPILoader, HTMLLoader")
 
     print()
 
 
-def example_5_extending_with_custom_loader():
-    """Example 5: Extending with a custom loader (for future formats)."""
+def example_7_normalize_to_canonical():
+    """Example 7: Complete workflow - Load & Normalize."""
     print("=" * 60)
-    print("Example 5: Extensibility - Custom Loader Registration")
+    print("Example 7: Complete Workflow (Load + Normalize)")
     print("=" * 60)
 
-    from adapter.ingestion.base_loader import BaseLoader
-    from adapter.pipeline.ingestion_pipeline import IngestionPipeline
-    from adapter.ingestion.detector import APIFormat
+    openapi_spec = """
+openapi: 3.0.0
+info:
+  title: E-Commerce API
+  version: 2.0.0
+paths:
+  /products/{productId}:
+    get:
+      operationId: getProductById
+      summary: Get product details
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: includeReviews
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Product details
+"""
 
-    # Define a custom loader (placeholder for future Postman support)
-    class PostmanLoader(BaseLoader):
-        """Placeholder loader for Postman collections."""
+    # Step 1: Load OpenAPI spec
+    loader = OpenAPILoader()
+    spec_dict = loader.load(openapi_spec)
 
-        def load(self, content: str) -> dict:
-            """Load Postman collection (simplified)."""
-            import json
-            data = json.loads(content)
+    # Step 2: Normalize to canonical format
+    normalizer = Normalizer()
+    endpoints = normalizer.normalize_openapi(spec_dict)
 
-            # Basic validation
-            if "info" not in data or "item" not in data:
-                raise ValueError("Invalid Postman collection")
+    # Step 3: Use canonical endpoints
+    print(f"\nProcessed {len(endpoints)} endpoint(s):\n")
+    for endpoint in endpoints:
+        print(f"Endpoint: {endpoint.name}")
+        print(f"  Method: {endpoint.method}")
+        print(f"  Path: {endpoint.path}")
+        print(f"  Description: {endpoint.summary}")
+        print(f"  Parameters:")
+        for param in endpoint.parameters:
+            req = "required" if param.required else "optional"
+            print(f"    - {param.name} ({param.location}, {param.type}, {req})")
 
-            return data
-
-    # Create pipeline and register custom loader
-    pipeline = IngestionPipeline()
-
-    # Note: We can't use APIFormat.POSTMAN yet (not defined),
-    # but this shows how you would register custom loaders
-    print("\nCustom loader pattern:")
-    print("  1. Create a class extending BaseLoader")
-    print("  2. Implement the load() method")
-    print("  3. Register with pipeline.register_loader()")
-    print("\nThis enables easy extension for:")
-    print("  - Postman collections")
-    print("  - GraphQL schemas")
-    print("  - Markdown documentation")
-    print("  - PDF documentation")
-    print("  - Any custom format")
+    print("\nNext steps:")
+    print("  → Phase 2: Generate MCP tool definitions from canonical endpoints")
+    print("  → Phase 3: Build runtime REST execution engine")
+    print("  → Phase 4: Deploy agent-facing MCP server")
 
     print()
 
@@ -301,11 +314,13 @@ if __name__ == "__main__":
     print("=" * 60 + "\n")
 
     # Run all examples
-    example_1_ingest_openapi()
-    example_2_ingest_html()
-    example_3_format_detection()
-    example_4_custom_configuration()
-    example_5_extending_with_custom_loader()
+    example_1_openapi_from_raw_content()
+    example_2_openapi_from_url()
+    example_3_openapi_from_file()
+    example_4_html_from_raw_content()
+    example_5_html_from_url()
+    example_6_convenience_functions()
+    example_7_normalize_to_canonical()
 
     print("=" * 60)
     print("All examples completed!")

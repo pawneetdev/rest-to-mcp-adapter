@@ -1,24 +1,27 @@
 """
-HTML documentation loader with LangChain integration.
+HTML documentation loader with URL and LangChain support.
 
 This loader handles HTML-based API documentation (e.g., CoinDCX-style docs).
-It cleans and extracts text content, preparing it for LLM-based parsing
-in future phases.
+It can load from URLs or raw HTML content, cleans and extracts text,
+preparing it for LLM-based parsing in future phases.
 
-The loader:
-- Removes scripts, styles, navigation, and boilerplate
-- Extracts clean, readable text
-- Preserves structure hints (headings, lists, etc.)
-- Uses LangChain's BSHTMLLoader when available
+Features:
+- Load from URL or raw HTML content
+- Remove scripts, styles, navigation, and boilerplate
+- Extract clean, readable text
+- Preserve structure hints (headings, lists, etc.)
+- Use LangChain's BSHTMLLoader when available
 
-Design notes:
-- This phase ONLY extracts clean text
-- LLM-based endpoint parsing happens in later phases
-- Focus on producing high-quality input for LLM extraction
+Future Enhancement:
+- Recursive crawling: The loader could be extended to recursively crawl
+  linked documentation pages to discover all API endpoints across multiple pages.
+  This would involve following internal links, deduplicating URLs, and
+  aggregating content from the entire documentation site.
 """
 
 import re
 from typing import Optional
+from urllib.parse import urlparse
 
 from .base_loader import BaseLoader, InvalidFormatError
 
@@ -29,24 +32,36 @@ class HTMLLoader(BaseLoader):
 
     This loader extracts clean text from HTML documentation pages,
     removing scripts, styles, navigation, and other boilerplate content.
+    It supports loading from URLs or raw HTML strings.
 
     The goal is to produce clean, structured text that can be processed
     by LLMs in later phases to extract endpoint information.
 
     Features:
+    - Load from URL or raw HTML content
     - Uses LangChain's BSHTMLLoader when available
     - Falls back to BeautifulSoup for manual cleaning
     - Configurable filtering of HTML elements
     - Preserves document structure (headings, lists, etc.)
 
     Examples:
+        >>> # Load from URL
         >>> loader = HTMLLoader()
-        >>> text = loader.load(html_content)
+        >>> text = loader.load_from_url("https://api-docs.example.com")
         >>> print(text)  # Clean text without HTML tags
+
+        >>> # Load from raw HTML
+        >>> text = loader.load(html_content)
 
         >>> # With custom filtering
         >>> loader = HTMLLoader(remove_tags=['nav', 'footer', 'aside'])
         >>> text = loader.load(html_content)
+
+    Future: Recursive Crawling
+        The loader can be extended to support recursive crawling:
+        >>> loader = HTMLLoader(recursive=True, max_depth=3)
+        >>> all_content = loader.load_from_url("https://docs.api.com")
+        # Would crawl all linked pages and aggregate content
     """
 
     # Default tags to remove (boilerplate/noise)
@@ -92,19 +107,74 @@ class HTMLLoader(BaseLoader):
         self.remove_classes = remove_classes or self.DEFAULT_REMOVE_CLASSES
         self.preserve_structure = preserve_structure
 
-    def load(self, content: str) -> str:
+    def load_from_url(self, url: str) -> str:
         """
-        Load and clean HTML content.
+        Load and clean HTML content from a URL.
 
         Args:
-            content: Raw HTML string
+            url: URL of the HTML documentation page
+
+        Returns:
+            Clean text extracted from HTML
+
+        Raises:
+            InvalidFormatError: If URL is invalid or content cannot be fetched
+            ValueError: If URL scheme is not http/https
+
+        Examples:
+            >>> loader = HTMLLoader()
+            >>> text = loader.load_from_url("https://docs.example.com/api")
+        """
+        # Validate URL
+        parsed = urlparse(url)
+        if not parsed.scheme in ["http", "https"]:
+            raise ValueError(f"Invalid URL scheme: {parsed.scheme}. Use http or https.")
+
+        if not parsed.netloc:
+            raise ValueError(f"Invalid URL: {url}")
+
+        # Fetch HTML content
+        try:
+            import requests
+
+            response = requests.get(url, timeout=30)
+            response.raise_for_status()
+            html_content = response.text
+
+        except ImportError:
+            raise InvalidFormatError(
+                "requests library not available. Install with: uv add requests"
+            )
+        except requests.RequestException as e:
+            raise InvalidFormatError(f"Failed to fetch URL {url}: {e}")
+
+        # Process the HTML content
+        return self.load(html_content)
+
+    def load(self, content: str) -> str:
+        """
+        Load and clean HTML content from a string.
+
+        Args:
+            content: Raw HTML string or URL
 
         Returns:
             Clean text extracted from HTML
 
         Raises:
             InvalidFormatError: If content is not valid HTML
+
+        Examples:
+            >>> loader = HTMLLoader()
+            >>> text = loader.load("<html><body>API Docs</body></html>")
         """
+        if not content or not content.strip():
+            raise InvalidFormatError("Content cannot be empty")
+
+        # Check if content looks like a URL
+        if content.strip().startswith(("http://", "https://")):
+            return self.load_from_url(content.strip())
+
         if not self.validate(content):
             raise InvalidFormatError("Content does not appear to be valid HTML")
 
@@ -172,7 +242,7 @@ class HTMLLoader(BaseLoader):
         except ImportError:
             raise ImportError(
                 "LangChain not available. Install with: "
-                "pip install langchain-community beautifulsoup4"
+                "uv add langchain-community beautifulsoup4"
             )
 
     def _load_with_beautifulsoup(self, content: str) -> str:
@@ -195,7 +265,7 @@ class HTMLLoader(BaseLoader):
         except ImportError:
             raise InvalidFormatError(
                 "BeautifulSoup not available. Install with: "
-                "pip install beautifulsoup4"
+                "uv add beautifulsoup4"
             )
 
         # Parse HTML

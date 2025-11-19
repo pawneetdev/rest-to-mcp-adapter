@@ -1,12 +1,10 @@
 """
-Pipeline orchestration for end-to-end API documentation ingestion.
+Pipeline helpers for API documentation ingestion.
 
-This module provides the high-level entry point for:
-- Detecting API documentation formats
-- Loading and parsing documentation
-- Returning structured output ready for MCP tool generation
+This module provides convenience functions for quick prototyping.
+For production use, call loaders directly from adapter.ingestion.
 """
 
-from .ingestion_pipeline import ingest_api_source, IngestionResult
+from .ingestion_pipeline import load_openapi, load_html
 
-__all__ = ["ingest_api_source", "IngestionResult"]
+__all__ = ["load_openapi", "load_html"]
