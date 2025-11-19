@@ -167,13 +167,16 @@ class HTMLLoader(BaseLoader):
         Examples:
             >>> loader = HTMLLoader()
             >>> text = loader.load("<html><body>API Docs</body></html>")
+            >>> text = loader.load("https://docs.example.com/api")
         """
         if not content or not content.strip():
             raise InvalidFormatError("Content cannot be empty")
 
-        # Check if content looks like a URL
-        if content.strip().startswith(("http://", "https://")):
-            return self.load_from_url(content.strip())
+        content_stripped = content.strip()
+
+        # Check if content looks like a URL (do this first)
+        if content_stripped.startswith(("http://", "https://")):
+            return self.load_from_url(content_stripped)
 
         if not self.validate(content):
             raise InvalidFormatError("Content does not appear to be valid HTML")

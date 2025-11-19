@@ -189,14 +189,20 @@ class OpenAPILoader(BaseLoader):
 
         content_stripped = content.strip()
 
-        # Check if it's a URL
+        # Check if it's a URL (do this first, before file path check)
         if content_stripped.startswith(("http://", "https://")):
             return self.load_from_url(content_stripped)
 
-        # Check if it's a file path
-        file_path = Path(content_stripped)
-        if file_path.exists() and file_path.is_file():
-            return self.load_from_file(file_path)
+        # Check if it's a file path (only for reasonable length strings)
+        # Avoid "File name too long" errors for very long strings
+        if len(content_stripped) < 4096:  # Max path length on most systems
+            try:
+                file_path = Path(content_stripped)
+                if file_path.exists() and file_path.is_file():
+                    return self.load_from_file(file_path)
+            except (OSError, ValueError):
+                # Not a valid file path, continue to treat as raw content
+                pass
 
         # Otherwise, treat as raw content
         return self._load_from_content(content)
