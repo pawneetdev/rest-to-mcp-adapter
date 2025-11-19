@@ -177,6 +177,12 @@ class APIExecutor:
         query_params = request_details["query_params"].copy()
         self.auth.apply(headers, query_params)
 
+        # Log request details for debugging
+        logger.debug(f"Request URL: {request_details['url']}")
+        logger.debug(f"Request Method: {request_details['method']}")
+        logger.debug(f"Request Headers: {headers}")
+        logger.debug(f"Request Body: {request_details['body']}")
+
         # Execute with retries
         for attempt in range(1, self.max_retries + 1):
             attempts = attempt
