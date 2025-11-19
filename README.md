@@ -49,9 +49,19 @@ The **runtime execution layer** provides:
 - **Error Handling**: Automatic retries with exponential backoff
 - **Comprehensive Examples**: Real-world usage patterns
 
+### Phase 4: MCP Server ✅ (Completed)
+
+The **MCP server layer** provides:
+
+- **MCP Server**: Complete Model Context Protocol server implementation
+- **Stdio Transport**: JSON-RPC communication via standard input/output
+- **Tool Discovery**: Expose REST API tools to LLM agents
+- **Tool Execution**: Execute API calls through MCP protocol
+- **Claude Integration**: Ready to use with Claude Desktop and other MCP clients
+- **Full Pipeline Integration**: Combines all previous phases into a complete system
+
 ### What's NOT Yet Implemented
 
-- ❌ Agent-facing MCP server (Phase 4)
 - ❌ LLM-based HTML/PDF parsing (Phase 5)
 - ❌ Extended loaders: Postman/GraphQL (Phase 6)
 - ❌ Recursive HTML crawling (Phase 7)
@@ -124,6 +134,11 @@ adapter/
 │   ├── request_builder.py  # Build HTTP requests
 │   ├── executor.py         # Execute API calls
 │   └── response.py         # Response processing
+├── server/                 # MCP server (Phase 4)
+│   ├── server.py           # Main MCP server
+│   ├── transport.py        # Stdio transport layer
+│   ├── tool_provider.py    # Tool discovery
+│   └── execution_handler.py # Tool execution
 └── pipeline/               # Convenience helpers
     └── ingestion_pipeline.py # Helper functions
 ```
@@ -432,6 +447,106 @@ See `examples/phase3_runtime_execution.py` for comprehensive examples:
 python examples/phase3_runtime_execution.py
 ```
 
+### Phase 4: MCP Server
+
+Create an MCP server that exposes your REST API tools to LLM agents like Claude:
+
+```python
+from adapter.ingestion import OpenAPILoader
+from adapter.parsing import Normalizer
+from adapter.mcp import ToolGenerator, ToolRegistry
+from adapter.runtime import APIExecutor, BearerAuth
+from adapter.server import MCPServer
+
+# Steps 1-2: Load and normalize (Phase 1)
+loader = OpenAPILoader()
+spec = loader.load("https://api.example.com/openapi.json")
+
+normalizer = Normalizer()
+endpoints = normalizer.normalize_openapi(spec)
+
+# Step 3: Generate MCP tools (Phase 2)
+generator = ToolGenerator(api_name="example")
+tools = generator.generate_tools(endpoints)
+
+registry = ToolRegistry(name="Example API")
+registry.add_tools(tools)
+
+# Step 4: Create executor (Phase 3)
+executor = APIExecutor(
+    base_url="https://api.example.com",
+    auth=BearerAuth(token="your-token"),
+    max_retries=3
+)
+
+# Step 5: Create and run MCP server (Phase 4)
+server = MCPServer(
+    name="Example API MCP Server",
+    version="1.0.0",
+    tool_registry=registry,
+    executor=executor,
+    endpoints=endpoints
+)
+
+# Run the server (stdio transport)
+server.run()
+```
+
+#### Using with Claude Desktop
+
+Configure your MCP server in Claude Desktop's config file:
+
+**MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
+
+**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "example-api": {
+      "command": "python",
+      "args": ["/path/to/your/mcp_server.py"]
+    }
+  }
+}
+```
+
+Claude will automatically connect to your MCP server and gain access to all your REST API tools!
+
+#### MCP Server Features
+
+- **JSON-RPC 2.0**: Standard protocol for MCP communication
+- **Tool Discovery**: `tools/list` - List all available API tools
+- **Tool Execution**: `tools/call` - Execute any API endpoint
+- **Stdio Transport**: Communication via standard input/output
+- **Error Handling**: Proper JSON-RPC error responses
+- **Logging**: Comprehensive logging for debugging
+
+#### Testing Your MCP Server
+
+```bash
+# Run the server
+python examples/phase4_mcp_server.py
+
+# Or test it with the test script
+python examples/test_mcp_server.py
+```
+
+#### Complete Phase 4 Examples
+
+See `examples/phase4_mcp_server.py` for comprehensive examples:
+
+```bash
+# Run basic example
+python examples/phase4_mcp_server.py basic
+
+# Run with authentication
+python examples/phase4_mcp_server.py auth
+
+# Run complete workflow
+python examples/phase4_mcp_server.py complete
+```
+
 ## 🔌 Extensibility
 
 ### No Format Detection
@@ -615,11 +730,12 @@ All identifiers are converted to `snake_case`:
 - Error handling with automatic retries and exponential backoff
 - Comprehensive authentication options
 
-### Phase 4: Agent-Facing MCP Server (Next)
-- Complete MCP server implementation
-- WebSocket/stdio transport
-- Tool discovery and execution
-- Integration with Claude/LLMs
+### Phase 4: Agent-Facing MCP Server ✅ (Completed)
+- Complete MCP server implementation with JSON-RPC 2.0
+- Stdio transport for communication
+- Tool discovery (tools/list) and execution (tools/call)
+- Integration with Claude Desktop and other MCP clients
+- Full pipeline: OpenAPI → Tools → Execution → MCP Server
 
 ### Phase 5: LLM-Based Extraction
 - HTML → structured endpoints (via LLM)
@@ -645,17 +761,19 @@ MIT License - see LICENSE file for details
 
 ## 🤝 Contributing
 
-Contributions are welcome! We've completed Phase 1 (Ingestion & Normalization), Phase 2 (MCP Tool Generation), and Phase 3 (Runtime Execution Engine). Phase 4 (MCP Server) is next on the roadmap.
+Contributions are welcome! We've completed all core phases (1-4): Ingestion, Tool Generation, Runtime Execution, and MCP Server. Phase 5+ focuses on advanced features.
 
 Areas for contribution:
-- MCP server implementation (Phase 4)
-- Additional loaders (Postman, GraphQL, etc.)
-- Recursive HTML crawling implementation
-- LLM-based extraction for unstructured docs
+- LLM-based extraction for HTML/PDF/Markdown docs (Phase 5)
+- Additional loaders: Postman, GraphQL, etc. (Phase 6)
+- Recursive HTML crawling implementation (Phase 7)
+- WebSocket transport for MCP server
 - Enhanced normalization logic
-- Additional authentication methods
+- Additional authentication methods (OAuth2 flow, custom headers)
+- Performance optimizations
 - Documentation improvements
 - Test coverage
+- Real-world use case examples
 
 ## 📞 Support
 
