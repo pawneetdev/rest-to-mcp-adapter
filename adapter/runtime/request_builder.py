@@ -94,6 +94,10 @@ class RequestBuilder:
         body_params = {}
         cookie_params = {}
 
+        # For POST/PUT/PATCH, parameters should go in body unless explicitly marked otherwise
+        # This handles APIs that don't explicitly mark parameters as "body" in OpenAPI spec
+        request_uses_body = endpoint.method in ("POST", "PUT", "PATCH")
+
         for param in endpoint.parameters:
             param_name = param.name
             param_value = parameters.get(param_name)
@@ -111,14 +115,31 @@ class RequestBuilder:
             # Route parameter to correct location
             if param.location == ParameterLocation.PATH:
                 path_params[param_name] = param_value
-            elif param.location == ParameterLocation.QUERY:
-                query_params[param_name] = param_value
             elif param.location == ParameterLocation.HEADER:
                 headers[param_name] = str(param_value)
-            elif param.location == ParameterLocation.BODY:
-                body_params[param_name] = param_value
             elif param.location == ParameterLocation.COOKIE:
                 cookie_params[param_name] = param_value
+            elif param.location == ParameterLocation.BODY:
+                body_params[param_name] = param_value
+            elif param.location == ParameterLocation.QUERY:
+                # For POST/PUT/PATCH, query params should go in body unless explicitly marked as query
+                if request_uses_body:
+                    body_params[param_name] = param_value
+                else:
+                    query_params[param_name] = param_value
+            else:
+                # Default behavior: POST/PUT/PATCH -> body, GET/DELETE -> query
+                if request_uses_body:
+                    body_params[param_name] = param_value
+                else:
+                    query_params[param_name] = param_value
+
+        # Also add any parameters not in endpoint definition to body for POST/PUT/PATCH
+        if request_uses_body:
+            endpoint_param_names = {p.name for p in endpoint.parameters}
+            for param_name, param_value in parameters.items():
+                if param_name not in endpoint_param_names and param_value is not None:
+                    body_params[param_name] = param_value
 
         # Build URL with path parameters
         url = self._build_url(endpoint.path, path_params)
