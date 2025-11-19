@@ -7,6 +7,7 @@ and response processing.
 
 import time
 import json
+import logging
 from typing import Any, Dict, Optional
 from dataclasses import dataclass
 
@@ -17,6 +18,8 @@ from ..parsing.canonical_models import CanonicalEndpoint
 from .auth import AuthHandler, NoAuth
 from .request_builder import RequestBuilder
 from .response import ResponseProcessor, ProcessedResponse
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
