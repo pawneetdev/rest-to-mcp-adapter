@@ -29,7 +29,7 @@ The **foundation layer** provides:
 - **Normalizer**: Convert raw data to canonical endpoint format
 - **LangChain Integration**: Optional integration for enhanced parsing
 
-### Phase 2: MCP Tool Generation ✅ (Current)
+### Phase 2: MCP Tool Generation ✅ (Completed)
 
 The **MCP integration layer** provides:
 
@@ -484,18 +484,20 @@ All identifiers are converted to `snake_case`:
 
 ## 🛣️ Roadmap
 
-### Phase 1: Ingestion & Normalization ✅ (Current)
+### Phase 1: Ingestion & Normalization ✅ (Completed)
 - Direct loader calls (no format detection)
 - OpenAPI/HTML loaders with URL/file support
 - Canonical models
 - Normalization pipeline
 
-### Phase 2: MCP Tool Generation (Next)
+### Phase 2: MCP Tool Generation ✅ (Completed)
 - Generate MCP tool definitions from canonical endpoints
 - Tool metadata generation
 - Parameter validation schemas
+- Tool registry with filtering and export
+- JSON Schema conversion for parameter validation
 
-### Phase 3: Runtime Execution Engine
+### Phase 3: Runtime Execution Engine (Next)
 - REST API call execution
 - Authentication handling
 - Response processing
@@ -531,7 +533,7 @@ MIT License - see LICENSE file for details
 
 ## 🤝 Contributing
 
-Contributions are welcome! This is Phase 1 of a larger vision.
+Contributions are welcome! We've completed Phase 1 (Ingestion & Normalization) and Phase 2 (MCP Tool Generation). Phase 3 (Runtime Execution Engine) is next on the roadmap.
 
 Areas for contribution:
 - Additional loaders (Postman, GraphQL, etc.)
