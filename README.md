@@ -17,9 +17,11 @@ This system transforms diverse API documentation formats (OpenAPI, HTML, Postman
 | Markdown Documentation | - | ✅ |
 | PDF Documentation | - | ✅ |
 
-## 🚀 Phase 1: Ingestion & Normalization (Current)
+## 🚀 Current Status
 
-This initial release provides the **foundation layer**:
+### Phase 1: Ingestion & Normalization ✅ (Completed)
+
+The **foundation layer** provides:
 
 - **OpenAPI Loader**: Parse OpenAPI 3.x and Swagger 2.x from URLs, files, or raw content
 - **HTML Loader**: Extract clean text from HTML docs (URLs or raw HTML)
@@ -27,9 +29,17 @@ This initial release provides the **foundation layer**:
 - **Normalizer**: Convert raw data to canonical endpoint format
 - **LangChain Integration**: Optional integration for enhanced parsing
 
-### What's NOT in Phase 1
+### Phase 2: MCP Tool Generation ✅ (Current)
 
-- ❌ MCP tool generation (Phase 2)
+The **MCP integration layer** provides:
+
+- **Tool Generator**: Convert canonical endpoints to MCP tool definitions
+- **Schema Converter**: Transform canonical schemas to JSON Schema
+- **Tool Registry**: Manage and organize generated tools
+- **Export Functionality**: Export tools to JSON for MCP agents
+
+### What's NOT Yet Implemented
+
 - ❌ Runtime REST execution engine (Phase 3)
 - ❌ Agent-facing MCP server (Phase 4)
 - ❌ LLM-based HTML/PDF parsing (Phase 5)
@@ -95,6 +105,10 @@ adapter/
 ├── parsing/                # Normalization and canonical models
 │   ├── canonical_models.py # Pydantic models
 │   └── normalizer.py       # Data normalization
+├── mcp/                    # MCP tool generation (Phase 2)
+│   ├── tool_generator.py   # Convert endpoints to MCP tools
+│   ├── schema_converter.py # JSON Schema conversion
+│   └── tool_registry.py    # Tool management
 └── pipeline/               # Convenience helpers
     └── ingestion_pipeline.py # Helper functions
 ```
@@ -222,6 +236,90 @@ See `examples/basic_usage.py` for comprehensive usage examples:
 
 ```bash
 python examples/basic_usage.py
+```
+
+### Phase 2: MCP Tool Generation
+
+Once you have normalized endpoints, you can convert them to MCP-compatible tool definitions:
+
+```python
+from adapter.ingestion import OpenAPILoader
+from adapter.parsing import Normalizer
+from adapter.mcp import ToolGenerator, ToolRegistry
+
+# Step 1: Load and normalize
+loader = OpenAPILoader()
+spec = loader.load("https://api.example.com/openapi.json")
+
+normalizer = Normalizer()
+endpoints = normalizer.normalize_openapi(spec)
+
+# Step 2: Generate MCP tools
+generator = ToolGenerator(api_name="example")
+tools = generator.generate_tools(endpoints)
+
+# Step 3: Register and organize
+registry = ToolRegistry(name="Example API Tools")
+registry.add_tools(tools)
+
+# Step 4: Export for MCP agents
+registry.export_json("example_tools.json")
+
+# Query tools
+print(f"Total tools: {registry.count()}")
+print(f"Tools: {registry.get_tool_names()}")
+
+# Filter by tags or HTTP method
+product_tools = registry.get_tools_by_tag("products")
+post_tools = registry.get_tools_by_method("POST")
+```
+
+#### MCP Tool Structure
+
+Each generated MCP tool includes:
+
+```python
+MCPTool(
+    name="example__get_user_by_id",      # API name + endpoint name
+    description="Get user by ID...",      # Full description with usage
+    inputSchema={                         # JSON Schema for parameters
+        "type": "object",
+        "properties": {
+            "user_id": {
+                "type": "string",
+                "description": "User identifier"
+            }
+        },
+        "required": ["user_id"]
+    },
+    metadata={                            # REST endpoint metadata
+        "method": "GET",
+        "path": "/users/{user_id}",
+        "tags": ["users"]
+    }
+)
+```
+
+#### Grouped vs Flat Parameters
+
+You can choose how parameters are organized:
+
+```python
+# Flat (default): All parameters at the same level
+generator = ToolGenerator(group_parameters=False)
+# Input schema: {"user_id": "...", "include_details": "...", ...}
+
+# Grouped: Parameters grouped by location
+generator = ToolGenerator(group_parameters=True)
+# Input schema: {"path": {"user_id": "..."}, "query": {"include_details": "..."}}
+```
+
+#### Complete Phase 2 Examples
+
+See `examples/phase2_mcp_tools.py` for comprehensive examples:
+
+```bash
+python examples/phase2_mcp_tools.py
 ```
 
 ## 🔌 Extensibility
