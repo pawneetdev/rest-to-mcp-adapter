@@ -29,11 +29,12 @@ This initial release provides the **foundation layer**:
 
 ### What's NOT in Phase 1
 
-- ❌ MCP tool generation (future phase)
-- ❌ Runtime REST execution engine (future phase)
-- ❌ LLM-based HTML/PDF parsing (future phase)
-- ❌ Recursive HTML crawling (future phase)
-- ❌ Postman/GraphQL loaders (future phase)
+- ❌ MCP tool generation (Phase 2)
+- ❌ Runtime REST execution engine (Phase 3)
+- ❌ Agent-facing MCP server (Phase 4)
+- ❌ LLM-based HTML/PDF parsing (Phase 5)
+- ❌ Extended loaders: Postman/GraphQL (Phase 6)
+- ❌ Recursive HTML crawling (Phase 7)
 
 ## 📦 Installation
 
@@ -391,28 +392,28 @@ All identifiers are converted to `snake_case`:
 - Canonical models
 - Normalization pipeline
 
-### Phase 2: LLM-Based Extraction (Next)
-- HTML → structured endpoints (via LLM)
-- PDF → structured endpoints (via LLM)
-- Markdown → structured endpoints (via LLM)
-- Unstructured docs → structured endpoints
-
-### Phase 3: MCP Tool Generation
+### Phase 2: MCP Tool Generation (Next)
 - Generate MCP tool definitions from canonical endpoints
 - Tool metadata generation
 - Parameter validation schemas
 
-### Phase 4: Runtime Execution Engine
+### Phase 3: Runtime Execution Engine
 - REST API call execution
 - Authentication handling
 - Response processing
 - Error handling
 
-### Phase 5: Agent-Facing MCP Server
+### Phase 4: Agent-Facing MCP Server
 - Complete MCP server implementation
 - WebSocket/stdio transport
 - Tool discovery and execution
 - Integration with Claude/LLMs
+
+### Phase 5: LLM-Based Extraction
+- HTML → structured endpoints (via LLM)
+- PDF → structured endpoints (via LLM)
+- Markdown → structured endpoints (via LLM)
+- Unstructured docs → structured endpoints
 
 ### Phase 6: Extended Loaders
 - Postman collection loader (URL/file support)
