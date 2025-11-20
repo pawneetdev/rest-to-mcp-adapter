@@ -9,11 +9,18 @@ Usage:
        python generate_binance_registry.py
 
     2. Then run the server:
+       # For public endpoints only
+       python run_binance_server.py
+
+       # For authenticated endpoints (set environment variables)
+       export BINANCE_API_KEY="your_api_key"
+       export BINANCE_API_SECRET="your_api_secret"
        python run_binance_server.py
 """
 
 import json
 import logging
+import os
 from pathlib import Path
 
 from adapter import (
@@ -24,6 +31,9 @@ from adapter import (
     CanonicalEndpoint,
 )
 from adapter.mcp import MCPTool
+
+# Import custom Binance auth handler
+from binance_auth import BinanceAuth
 
 # Set up logging
 logging.basicConfig(
@@ -124,17 +134,30 @@ def main():
     registry = load_registry_from_file(REGISTRY_FILE)
     endpoints = load_endpoints_from_file(ENDPOINTS_FILE)
 
-    # Create executor (Binance public API - no auth for public endpoints)
-    # For authenticated endpoints, you would use:
-    # from adapter import APIKeyAuth
-    # auth = APIKeyAuth(api_key="your_api_key", header_name="X-MBX-APIKEY")
+    # Create executor with authentication
+    # Check for API credentials in environment variables
+    api_key = os.getenv("BINANCE_API_KEY")
+    api_secret = os.getenv("BINANCE_API_SECRET")
+
+    if api_key and api_secret:
+        logger.info("✓ Found Binance API credentials in environment")
+        auth = BinanceAuth(api_key=api_key, api_secret=api_secret)
+        auth_status = "Authenticated (API Key + HMAC SHA256)"
+    else:
+        logger.info("⚠ No API credentials found - using public endpoints only")
+        logger.info("  To enable authenticated endpoints, set:")
+        logger.info("    export BINANCE_API_KEY='your_api_key'")
+        logger.info("    export BINANCE_API_SECRET='your_api_secret'")
+        auth = NoAuth()
+        auth_status = "Public only (no authentication)"
+
     executor = APIExecutor(
         base_url=BASE_URL,
-        auth=NoAuth()
+        auth=auth
     )
 
-    logger.info(f"Using base URL: {BASE_URL}")
-    logger.info("Note: For authenticated endpoints, update the auth configuration")
+    logger.info(f"\nBase URL: {BASE_URL}")
+    logger.info(f"Auth: {auth_status}")
 
     # Create MCP server
     server = MCPServer(
