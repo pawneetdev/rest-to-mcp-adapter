@@ -1,718 +1,611 @@
-# Universal REST → MCP Adapter
+# REST-to-MCP Adapter
 
-A production-quality framework for converting **any** REST API documentation into **MCP-compatible tools** for Large Language Models and agent systems.
+**A Python library for converting OpenAPI specifications into MCP (Model Context Protocol) tools for AI agents.**
 
-## 🎯 Project Vision
+Transform any REST API with an OpenAPI/Swagger specification into tools that Claude, GPT, and other LLM-powered agents can use.
 
-This system transforms diverse API documentation formats (OpenAPI, Postman, GraphQL, etc.) into a unified canonical format that can be used to generate MCP tools for LLM-powered agents.
+[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-### Supported Formats (Planned)
+---
 
-| Format | Phase 1 | Future Phases |
-|--------|---------|---------------|
-| OpenAPI/Swagger (JSON/YAML) | ✅ | - |
-| Postman Collections | - | ✅ |
-| GraphQL Schemas | - | ✅ |
+## 🚀 Quick Start
 
-## 🚀 Current Status
+```python
+from adapter import (
+    OpenAPILoader,
+    Normalizer,
+    ToolGenerator,
+    ToolRegistry,
+    APIExecutor,
+    BearerAuth,
+    MCPServer
+)
 
-### Phase 1: Ingestion & Normalization ✅ (Completed)
+# 1. Load OpenAPI spec
+loader = OpenAPILoader()
+spec = loader.load("https://api.example.com/openapi.json")
 
-The **foundation layer** provides:
+# 2. Normalize to canonical format
+normalizer = Normalizer()
+endpoints = normalizer.normalize_openapi(spec)
 
-- **OpenAPI Loader**: Parse OpenAPI 3.x and Swagger 2.x from URLs, files, or raw content
-- **Canonical Models**: Pydantic-based unified data model
-- **Normalizer**: Convert raw data to canonical endpoint format
-- **LangChain Integration**: Optional integration for enhanced parsing
+# 3. Generate MCP tools (auth params auto-filtered!)
+generator = ToolGenerator(api_name="myapi")
+tools = generator.generate_tools(endpoints)
 
-### Phase 2: MCP Tool Generation ✅ (Completed)
+# 4. Create tool registry
+registry = ToolRegistry(name="My API")
+registry.add_tools(tools)
 
-The **MCP integration layer** provides:
+# 5. Set up API executor with authentication
+executor = APIExecutor(
+    base_url="https://api.example.com",
+    auth=BearerAuth(token="your-token")
+)
 
-- **Tool Generator**: Convert canonical endpoints to MCP tool definitions
-- **Schema Converter**: Transform canonical schemas to JSON Schema
-- **Tool Registry**: Manage and organize generated tools
-- **Auth Parameter Filtering**: Hybrid approach (defaults + auto-detect + custom overrides)
-- **Export Functionality**: Export tools to JSON for MCP agents
-
-### Phase 3: Runtime Execution Engine ✅ (Completed)
-
-The **runtime execution layer** provides:
-
-- **API Executor**: Execute actual REST API calls from canonical endpoints
-- **Authentication Handlers**: Support for API Key, Bearer, Basic, OAuth2
-- **Request Builder**: Build HTTP requests with path/query/header/body parameters
-- **Response Processor**: Parse and normalize API responses
-- **Error Handling**: Automatic retries with exponential backoff
-- **Comprehensive Examples**: Real-world usage patterns
-
-### Phase 4: MCP Server ✅ (Completed)
-
-The **MCP server layer** provides:
-
-- **MCP Server**: Complete Model Context Protocol server implementation
-- **Stdio Transport**: JSON-RPC communication via standard input/output
-- **Tool Discovery**: Expose REST API tools to LLM agents
-- **Tool Execution**: Execute API calls through MCP protocol
-- **Claude Integration**: Ready to use with Claude Desktop and other MCP clients
-- **Full Pipeline Integration**: Combines all previous phases into a complete system
-
-### What's NOT Yet Implemented
-
-- ❌ Extended loaders: Postman/GraphQL (Future Phases)
-
-## ⚠️ Known Limitations
-
-### MCP Tool Name Length (64 Characters)
-
-Claude's MCP protocol enforces a **strict 64-character limit** on tool names. This can affect APIs with deeply nested or verbose endpoint paths.
-
-**Automatic Handling**: The adapter intelligently truncates long names by:
-- Removing version numbers (v1, v2, v3)
-- Removing common API keywords (api, sapi, rest)
-- Preserving the HTTP method and key path components
-- Maintaining readability while staying within the limit
-
-**Example**:
-```
-Original: binance_delete_sapi_v1_sub_account_sub_account_api_ip_restriction_ip_list (73 chars)
-Truncated: binance_delete_sub_account_sub_account_ip_restriction_ip_list (64 chars)
+# 6. Start MCP server (for Claude Desktop, etc.)
+server = MCPServer(
+    name="My API Server",
+    version="1.0.0",
+    tool_registry=registry,
+    executor=executor,
+    endpoints=endpoints
+)
+server.run()  # Claude can now use your API!
 ```
 
-**Impact**:
-- ✅ **Most APIs**: No impact - names are typically under 64 characters
-- ⚠️ **Large APIs** (Binance, AWS, etc.): Some names may be automatically truncated
-- 📝 **Full paths preserved**: Original paths remain in `tool.metadata["path"]`
-
-See [LIBRARY_USAGE.md](LIBRARY_USAGE.md#important-limitations-and-considerations) for details on checking your API.
-
-### OpenAPI $ref Dereferencing
-
-The adapter automatically resolves OpenAPI `$ref` pointers. Specs with circular references may fail to load in strict mode but will continue with a warning in non-strict mode.
+---
 
 ## 📦 Installation
 
-### Using uv (Recommended)
+### From Source (Recommended for now)
 
 ```bash
-# Clone the repository
-git clone https://github.com/pawneetdev/rest-to-mcp-adapter.git
+git clone https://github.com/your-username/rest-to-mcp-adapter.git
 cd rest-to-mcp-adapter
-
-# Create a virtual environment with uv
-uv venv
-
-# Activate the virtual environment
-# On Linux/Mac:
-source .venv/bin/activate
-# On Windows:
-# .venv\Scripts\activate
-
-# Install dependencies
-uv pip install -r requirements.txt
-```
-
-### Using pip (Alternative)
-
-```bash
-# Clone the repository
-git clone https://github.com/pawneetdev/rest-to-mcp-adapter.git
-cd rest-to-mcp-adapter
-
-# Create a virtual environment
-python -m venv .venv
-
-# Activate the virtual environment
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate  # Windows
-
-# Install dependencies
-pip install -r requirements.txt
+pip install -e .
 ```
 
 ### Dependencies
 
-- **pydantic** ≥2.0.0 - Data validation and canonical models
-- **PyYAML** ≥6.0 - YAML parsing
-- **requests** ≥2.31.0 - HTTP requests for URL loading
-- **langchain-community** ≥0.0.20 - LangChain integration (optional but recommended)
+```bash
+# Core dependencies (auto-installed)
+pydantic>=2.0.0
+pyyaml>=6.0
+requests>=2.31.0
 
-## 🏗️ Architecture
-
-```
-adapter/
-├── ingestion/              # Loaders for different formats
-│   ├── base_loader.py      # Abstract loader interface
-│   └── loader_openapi.py   # OpenAPI/Swagger loader
-├── parsing/                # Normalization and canonical models
-│   ├── canonical_models.py # Pydantic models
-│   └── normalizer.py       # Data normalization
-├── mcp/                    # MCP tool generation (Phase 2)
-│   ├── tool_generator.py   # Convert endpoints to MCP tools
-│   ├── schema_converter.py # JSON Schema conversion
-│   └── tool_registry.py    # Tool management
-├── runtime/                # Runtime execution engine (Phase 3)
-│   ├── auth.py             # Authentication handlers
-│   ├── request_builder.py  # Build HTTP requests
-│   ├── executor.py         # Execute API calls
-│   └── response.py         # Response processing
-├── server/                 # MCP server (Phase 4)
-│   ├── server.py           # Main MCP server
-│   ├── transport.py        # Stdio transport layer
-│   ├── tool_provider.py    # Tool discovery
-│   └── execution_handler.py # Tool execution
-└── pipeline/               # Convenience helpers
-    └── ingestion_pipeline.py # Helper functions
+# Optional but recommended
+langchain-community>=0.0.20
 ```
 
-### Key Design Principles
+---
 
-1. **Simplicity**: No format detection - users call the appropriate loader directly
-2. **Flexibility**: Load from URLs, file paths, or raw content
-3. **Extensibility**: Easy to add new loaders for additional formats
-4. **LangChain Integration**: Leverage existing utilities where available
-5. **Resilience**: Graceful handling of partial/malformed specs
-6. **Type Safety**: Pydantic models for validation
+## ✨ Key Features
 
-## 📚 Usage
+### 🔄 OpenAPI Ingestion
+- **Load from anywhere**: URL, file path, or raw JSON/YAML
+- **Full spec support**: OpenAPI 3.x and Swagger 2.x
+- **Auto-detection**: Automatically determines input type
+- **$ref dereferencing**: Resolves all JSON pointer references
 
-### Quick Start
+### 🛠️ MCP Tool Generation
+- **Automatic conversion**: OpenAPI endpoints → MCP tools
+- **Smart naming**: 64-character limit with intelligent truncation
+- **Auth filtering**: Automatically hides auth parameters from users
+- **Hybrid approach**: Defaults + auto-detection + custom overrides
+
+### 🔐 Authentication Support
+- **Built-in handlers**: API Key, Bearer, Basic, OAuth2
+- **Custom handlers**: Easy to implement your own
+- **Automatic parameter filtering**: Auth params hidden from tool schemas
+- **Conditional auth**: Only applies to endpoints that require it
+
+### ⚡ Runtime Execution
+- **Direct API calls**: Execute REST requests from canonical endpoints
+- **Retry logic**: Exponential backoff for failed requests
+- **Error handling**: Comprehensive error types and messages
+- **Response processing**: JSON, text, and binary support
+
+### 🤖 MCP Server
+- **Full MCP protocol**: JSON-RPC 2.0 over stdio
+- **Claude integration**: Ready for Claude Desktop
+- **Tool discovery**: `tools/list` endpoint
+- **Tool execution**: `tools/call` endpoint
+
+---
+
+## 📖 Detailed Usage
+
+### 1. Loading OpenAPI Specifications
 
 ```python
-from adapter.ingestion import OpenAPILoader
-from adapter.parsing import Normalizer
+from adapter import OpenAPILoader
 
-# Load OpenAPI from URL
 loader = OpenAPILoader()
+
+# From URL
 spec = loader.load("https://api.example.com/openapi.json")
 
-# Or from file
-spec = loader.load_from_file("./specs/api.yaml")
+# From file
+spec = loader.load("./specs/api.yaml")
 
-# Or from raw content
+# From raw content
+yaml_content = """
+openapi: 3.0.0
+info:
+  title: My API
+  version: 1.0.0
+paths:
+  /users:
+    get:
+      summary: List users
+"""
 spec = loader.load(yaml_content)
 
-# Normalize to canonical format
+# Auto-detection works for all methods
+spec = loader.load(source)  # Detects URL, file, or content automatically
+```
+
+### 2. Normalizing to Canonical Format
+
+```python
+from adapter import Normalizer
+
 normalizer = Normalizer()
 endpoints = normalizer.normalize_openapi(spec)
 
+# Inspect normalized endpoints
 for endpoint in endpoints:
-    print(f"{endpoint.name}: {endpoint.method} {endpoint.path}")
+    print(f"{endpoint.method} {endpoint.path}")
+    print(f"  Name: {endpoint.name}")
+    print(f"  Parameters: {len(endpoint.parameters)}")
+    print(f"  Requires auth: {bool(endpoint.security)}")
 ```
 
-### Example 1: OpenAPI from URL
+### 3. Generating MCP Tools
+
+#### Basic Usage
 
 ```python
-from adapter.ingestion import OpenAPILoader
-from adapter.parsing import Normalizer
+from adapter import ToolGenerator
 
-# Load from URL
-loader = OpenAPILoader()
-spec = loader.load_from_url("https://petstore3.swagger.io/api/v3/openapi.json")
-
-# Normalize
-normalizer = Normalizer()
-endpoints = normalizer.normalize_openapi(spec)
-
-# Access canonical data
-for endpoint in endpoints:
-    print(f"{endpoint.name}: {endpoint.method} {endpoint.path}")
-    for param in endpoint.parameters:
-        print(f"  - {param.name} ({param.location}): {param.type}")
-```
-
-### Example 2: OpenAPI from File
-
-```python
-from adapter.ingestion import OpenAPILoader
-
-loader = OpenAPILoader()
-
-# Load from file path
-spec = loader.load_from_file("./specs/api.yaml")
-
-# Or let it auto-detect
-spec = loader.load("./specs/api.yaml")  # Auto-detects file path
-```
-
-### Example 3: Convenience Functions
-
-```python
-from adapter.pipeline import load_openapi
-
-# Quick prototyping
-spec = load_openapi("https://api.example.com/openapi.json")
-```
-
-### Complete Examples
-
-See `examples/basic_usage.py` for comprehensive usage examples:
-
-```bash
-python examples/basic_usage.py
-```
-
-### Phase 2: MCP Tool Generation
-
-Once you have normalized endpoints, you can convert them to MCP-compatible tool definitions:
-
-```python
-from adapter.ingestion import OpenAPILoader
-from adapter.parsing import Normalizer
-from adapter.mcp import ToolGenerator, ToolRegistry
-
-# Step 1: Load and normalize
-loader = OpenAPILoader()
-spec = loader.load("https://api.example.com/openapi.json")
-
-normalizer = Normalizer()
-endpoints = normalizer.normalize_openapi(spec)
-
-# Step 2: Generate MCP tools
-generator = ToolGenerator(api_name="example")
+generator = ToolGenerator(api_name="myapi")
 tools = generator.generate_tools(endpoints)
 
-# Step 3: Register and organize
-registry = ToolRegistry(name="Example API Tools")
-registry.add_tools(tools)
+# Tools are ready to use!
+for tool in tools:
+    print(f"Tool: {tool.name}")
+    print(f"Description: {tool.description}")
+    print(f"Parameters: {tool.inputSchema}")
+```
 
-# Step 4: Export for MCP agents
-registry.export_json("example_tools.json")
+#### With Auto-Detected Auth Filtering
+
+```python
+from adapter import OpenAPILoader, ToolGenerator
+
+# Load spec
+loader = OpenAPILoader()
+spec = loader.load("api.yaml")
+
+# Auto-detect auth parameters from security schemes
+auto_detected = loader.extract_auth_parameters(spec)
+print(f"Auto-detected: {auto_detected}")
+# Output: {'x-api-key', 'signature', ...}
+
+# Generate tools with hybrid filtering (defaults + auto-detected)
+generator = ToolGenerator(
+    api_name="myapi",
+    auto_detected_auth_params=auto_detected
+)
+tools = generator.generate_tools(endpoints)
+
+# Auth parameters are automatically hidden!
+# Users only see business parameters
+```
+
+#### With Custom Auth Parameters
+
+```python
+# Override defaults completely
+generator = ToolGenerator(
+    api_name="myapi",
+    auth_params={'my_signature', 'my_timestamp', 'my_nonce'}
+)
+tools = generator.generate_tools(endpoints)
+```
+
+### 4. Working with Tool Registry
+
+```python
+from adapter import ToolRegistry
+
+# Create registry
+registry = ToolRegistry(name="My API")
+registry.add_tools(tools)
 
 # Query tools
 print(f"Total tools: {registry.count()}")
-print(f"Tools: {registry.get_tool_names()}")
+print(f"Tool names: {registry.get_tool_names()}")
 
-# Filter by tags or HTTP method
+# Filter tools
 product_tools = registry.get_tools_by_tag("products")
-post_tools = registry.get_tools_by_method("POST")
+get_tools = registry.get_tools_by_method("GET")
+search_results = registry.search_tools("user")
+
+# Get specific tool
+user_tool = registry.get_tool("myapi_get_users")
+
+# Export/Import
+registry.export_json("tools.json")
+registry2 = ToolRegistry.import_json("tools.json")
 ```
 
-#### MCP Tool Structure
+### 5. Authentication Handlers
 
-Each generated MCP tool includes:
+#### Built-in Handlers
 
 ```python
-MCPTool(
-    name="example__get_user_by_id",      # API name + endpoint name
-    description="Get user by ID...",      # Full description with usage
-    inputSchema={                         # JSON Schema for parameters
-        "type": "object",
-        "properties": {
-            "user_id": {
-                "type": "string",
-                "description": "User identifier"
-            }
-        },
-        "required": ["user_id"]
-    },
-    metadata={                            # REST endpoint metadata
-        "method": "GET",
-        "path": "/users/{user_id}",
-        "tags": ["users"]
-    }
-)
-```
+from adapter import APIExecutor, BearerAuth, APIKeyAuth, BasicAuth
 
-#### Grouped vs Flat Parameters
-
-You can choose how parameters are organized:
-
-```python
-# Flat (default): All parameters at the same level
-generator = ToolGenerator(group_parameters=False)
-# Input schema: {"user_id": "...", "include_details": "...", ...}
-
-# Grouped: Parameters grouped by location
-generator = ToolGenerator(group_parameters=True)
-# Input schema: {"path": {"user_id": "..."}, "query": {"include_details": "..."}}
-```
-
-#### Complete Phase 2 Examples
-
-See `examples/phase2_mcp_tools.py` for comprehensive examples:
-
-```bash
-python examples/phase2_mcp_tools.py
-```
-
-### Phase 3: Runtime Execution
-
-Execute actual REST API calls using canonical endpoints:
-
-```python
-from adapter.ingestion import OpenAPILoader
-from adapter.parsing import Normalizer
-from adapter.runtime import APIExecutor, BearerAuth
-
-# Step 1: Load and normalize
-loader = OpenAPILoader()
-spec = loader.load("https://api.example.com/openapi.json")
-
-normalizer = Normalizer()
-endpoints = normalizer.normalize_openapi(spec)
-
-# Step 2: Configure authentication
-auth = BearerAuth(token="your-api-token")
-
-# Step 3: Create executor
+# Bearer Token
 executor = APIExecutor(
     base_url="https://api.example.com",
-    auth=auth,
-    max_retries=3,
-    timeout=30
+    auth=BearerAuth(token="your-bearer-token")
 )
 
-# Step 4: Execute API calls
-result = executor.execute(
-    endpoint=endpoints[0],
-    parameters={"user_id": "123", "include": "profile"}
-)
-
-# Step 5: Handle response
-if result.success:
-    print(f"Data: {result.response.data}")
-    print(f"Time: {result.execution_time_ms}ms")
-else:
-    print(f"Error: {result.response.error}")
-```
-
-#### Authentication Options
-
-The runtime supports multiple authentication methods:
-
-```python
-from adapter.runtime import NoAuth, APIKeyAuth, BearerAuth, BasicAuth, OAuth2Auth
-
-# No authentication
-auth = NoAuth()
-
-# API Key in header
-auth = APIKeyAuth(key="your-key", location="header", name="X-API-Key")
-
-# API Key in query parameter
-auth = APIKeyAuth(key="your-key", location="query", name="api_key")
-
-# Bearer token
-auth = BearerAuth(token="your-bearer-token")
-
-# Basic authentication
-auth = BasicAuth(username="user", password="pass")
-
-# OAuth2
-auth = OAuth2Auth(access_token="your-oauth-token")
-```
-
-#### Error Handling and Retries
-
-The executor automatically retries on transient failures:
-
-```python
+# API Key (in header)
 executor = APIExecutor(
     base_url="https://api.example.com",
-    max_retries=3,                          # Retry up to 3 times
-    retry_backoff=1.0,                      # Start with 1s, doubles each retry
-    retry_on_status_codes=[429, 500, 502, 503, 504],  # Retry these codes
-    timeout=30                              # Request timeout in seconds
+    auth=APIKeyAuth(api_key="your-api-key", header_name="X-API-Key")
 )
 
-result = executor.execute(endpoint=my_endpoint, parameters=params)
-
-print(f"Attempts: {result.attempts}")      # How many tries it took
-print(f"Success: {result.success}")        # Whether it succeeded
-print(f"Time: {result.execution_time_ms}ms")
-```
-
-#### Complete Phase 3 Examples
-
-See `examples/phase3_runtime_execution.py` for comprehensive examples:
-
-```bash
-python examples/phase3_runtime_execution.py
-```
-
-### Phase 4: MCP Server
-
-Create an MCP server that exposes your REST API tools to LLM agents like Claude:
-
-```python
-from adapter.ingestion import OpenAPILoader
-from adapter.parsing import Normalizer
-from adapter.mcp import ToolGenerator, ToolRegistry
-from adapter.runtime import APIExecutor, BearerAuth
-from adapter.server import MCPServer
-
-# Steps 1-2: Load and normalize (Phase 1)
-loader = OpenAPILoader()
-spec = loader.load("https://api.example.com/openapi.json")
-
-normalizer = Normalizer()
-endpoints = normalizer.normalize_openapi(spec)
-
-# Step 3: Generate MCP tools (Phase 2)
-generator = ToolGenerator(api_name="example")
-tools = generator.generate_tools(endpoints)
-
-registry = ToolRegistry(name="Example API")
-registry.add_tools(tools)
-
-# Step 4: Create executor (Phase 3)
+# API Key (in query)
 executor = APIExecutor(
     base_url="https://api.example.com",
-    auth=BearerAuth(token="your-token"),
+    auth=APIKeyAuth(api_key="your-api-key", location="query", param_name="apikey")
+)
+
+# Basic Auth
+executor = APIExecutor(
+    base_url="https://api.example.com",
+    auth=BasicAuth(username="user", password="pass")
+)
+```
+
+#### Custom Auth Handler
+
+```python
+from adapter.runtime import AuthHandler
+
+class CustomAuth(AuthHandler):
+    def __init__(self, api_key: str, api_secret: str):
+        self.api_key = api_key
+        self.api_secret = api_secret
+
+    def apply(self, headers: dict, params: dict) -> None:
+        # Add custom authentication logic
+        import time
+        import hmac
+        import hashlib
+
+        timestamp = int(time.time() * 1000)
+        params["timestamp"] = str(timestamp)
+
+        # Create signature
+        query_string = "&".join(f"{k}={v}" for k, v in sorted(params.items()))
+        signature = hmac.new(
+            self.api_secret.encode(),
+            query_string.encode(),
+            hashlib.sha256
+        ).hexdigest()
+
+        params["signature"] = signature
+        headers["X-API-KEY"] = self.api_key
+
+# Use custom auth
+executor = APIExecutor(
+    base_url="https://api.example.com",
+    auth=CustomAuth(api_key="key", api_secret="secret")
+)
+```
+
+### 6. Executing API Calls Directly
+
+```python
+from adapter import APIExecutor, NoAuth
+
+# Create executor
+executor = APIExecutor(
+    base_url="https://api.example.com",
+    auth=NoAuth(),  # Public endpoints
+    timeout=30,
     max_retries=3
 )
 
-# Step 5: Create and run MCP server (Phase 4)
+# Find an endpoint
+endpoint = next(ep for ep in endpoints if ep.name == "get_users")
+
+# Execute call
+result = executor.execute(endpoint, arguments={"limit": 10})
+
+if result.success:
+    print(f"Status: {result.status_code}")
+    print(f"Data: {result.response.data}")
+else:
+    print(f"Error: {result.error}")
+```
+
+### 7. Running an MCP Server
+
+```python
+from adapter import MCPServer
+
+# Create server (combines registry + executor + endpoints)
 server = MCPServer(
-    name="Example API MCP Server",
+    name="My API Server",
     version="1.0.0",
     tool_registry=registry,
     executor=executor,
     endpoints=endpoints
 )
 
-# Run the server (stdio transport)
+# Run server (stdio transport for Claude Desktop)
 server.run()
 ```
 
-#### Using with Claude Desktop
+#### Configure in Claude Desktop
 
-Configure your MCP server in Claude Desktop's config file:
-
-**MacOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-
-**Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+Add to `claude_desktop_config.json`:
 
 ```json
 {
   "mcpServers": {
-    "example-api": {
+    "myapi": {
       "command": "python",
-      "args": ["/path/to/your/mcp_server.py"]
+      "args": ["/path/to/your/server.py"]
     }
   }
 }
 ```
 
-Claude will automatically connect to your MCP server and gain access to all your REST API tools!
+---
 
-#### MCP Server Features
+## 🔐 Authentication Parameter Filtering
 
-- **JSON-RPC 2.0**: Standard protocol for MCP communication
-- **Tool Discovery**: `tools/list` - List all available API tools
-- **Tool Execution**: `tools/call` - Execute any API endpoint
-- **Stdio Transport**: Communication via standard input/output
-- **Error Handling**: Proper JSON-RPC error responses
-- **Logging**: Comprehensive logging for debugging
+One of the most powerful features is **automatic authentication parameter filtering**. This ensures users never see or need to provide auth-related parameters.
 
-#### Testing Your MCP Server
+### How It Works
 
-```bash
-# Run the server
-python examples/phase4_mcp_server.py
+The library uses a **hybrid approach** combining:
 
-# Or test it with the test script
-python examples/test_mcp_server.py
-```
+1. **Default common parameters**: `signature`, `timestamp`, `api_key`, `authorization`, etc.
+2. **Auto-detected from OpenAPI**: Extracts from `securitySchemes`
+3. **Custom overrides**: You can specify your own
 
-#### Complete Phase 4 Examples
-
-See `examples/phase4_mcp_server.py` for comprehensive examples:
-
-```bash
-# Run basic example
-python examples/phase4_mcp_server.py basic
-
-# Run with authentication
-python examples/phase4_mcp_server.py auth
-
-# Run complete workflow
-python examples/phase4_mcp_server.py complete
-```
-
-## 🔌 Extensibility
-
-### No Format Detection
-
-The adapter uses a **simple, explicit design** - users call the appropriate loader directly:
+### Default Auth Parameters
 
 ```python
-from adapter.ingestion import OpenAPILoader
-
-# Call the right loader for your format
-openapi_loader = OpenAPILoader()
+DEFAULT_AUTH_PARAMS = {
+    'signature', 'timestamp', 'recvwindow', 'recv_window',
+    'api_key', 'apikey', 'api_secret', 'apisecret',
+    'access_token', 'accesstoken', 'token',
+    'authorization', 'auth',
+    'nonce', 'sign',
+}
 ```
 
-**Why no format detection?**
-- Simpler API - explicit is better than implicit
-- Users know their format
-- Reduces complexity and potential errors
-- Easier to extend and maintain
-
-### Adding Custom Loaders
-
-The framework is designed for easy extension:
-
-```python
-from adapter.ingestion.base_loader import BaseLoader
-
-class PostmanLoader(BaseLoader):
-    def load(self, content: str) -> dict:
-        # Parse Postman collection
-        import json
-        return json.loads(content)
-
-    def load_from_url(self, url: str) -> dict:
-        # Fetch and parse from URL
-        pass
-```
-
-### Future Loader Support
-
-The architecture is ready for:
-- **Postman Collections**: Import Postman collection JSON (from URL/file)
-- **GraphQL Schemas**: Parse GraphQL schema definitions
-- **Markdown Docs**: Extract endpoints from Markdown
-- **PDF Docs**: Extract text and parse with LLM
-
-## 🌐 URL and File Support
-
-All loaders support multiple input methods:
-
-### OpenAPI Loader
+### Auto-Detection Example
 
 ```python
 loader = OpenAPILoader()
+spec = loader.load("api.yaml")
 
-# From URL
-spec = loader.load_from_url("https://api.example.com/openapi.json")
+# Extract auth params from securitySchemes
+auth_params = loader.extract_auth_parameters(spec)
+# Returns: {'x-api-key', 'signature', ...}
 
-# From file path
-spec = loader.load_from_file("./specs/api.yaml")
-
-# From raw content
-spec = loader.load(yaml_content)
-
-# Auto-detect (URL, file, or content)
-spec = loader.load("https://api.example.com/openapi.json")  # Detects URL
-spec = loader.load("./specs/api.yaml")  # Detects file
-spec = loader.load('{"openapi": "3.0.0"}')  # Detects content
-```
-
-## 📊 Canonical Data Model
-
-All endpoints are normalized to a consistent format:
-
-```python
-CanonicalEndpoint(
-    name="get_user_by_id",           # snake_case identifier
-    method="GET",                     # HTTP method
-    path="/users/{user_id}",          # URL path
-    description="Get user by ID",     # Description
-    summary="Get user",               # Brief summary
-    parameters=[                      # All parameters
-        CanonicalParameter(
-            name="user_id",
-            location="path",          # query|path|header|body
-            type="number",            # string|number|boolean|object|array
-            required=True,
-            description="User identifier"
-        )
-    ],
-    body_schema=None,                 # Request body schema
-    response_schema=CanonicalSchema(...),  # Response schema
-    tags=["users"],                   # Categorization
-    deprecated=False                  # Deprecation status
+# Use in tool generation
+generator = ToolGenerator(
+    api_name="myapi",
+    auto_detected_auth_params=auth_params
 )
 ```
 
-## 🧪 Data Types & Normalization
+### Supported Security Schemes
 
-### Type Normalization
+| Type | Auto-Detected Parameters |
+|------|--------------------------|
+| `apiKey` | Parameter name from spec |
+| `http` (bearer/basic) | `authorization` |
+| `oauth2` | `authorization`, `access_token`, `token` |
+| `openIdConnect` | `authorization` |
 
-All types are normalized to:
-- `string` - Text data
-- `number` - Numeric data (int/float)
-- `boolean` - True/false
-- `object` - Nested objects
-- `array` - Lists/arrays
-- `null` - Null values
+### Example: Before vs After
 
-### Parameter Locations
+**Without filtering** (❌ Bad):
+```python
+# User sees auth parameters
+tool.inputSchema = {
+    "properties": {
+        "symbol": {"type": "string"},
+        "timestamp": {"type": "integer"},  # ❌ Exposed
+        "signature": {"type": "string"}     # ❌ Exposed
+    }
+}
 
-All locations are normalized to:
-- `query` - URL query parameters
-- `path` - URL path parameters
-- `header` - HTTP headers
-- `body` - Request body
-- `cookie` - Cookie parameters
+# User has to provide them (confusing!)
+client.call_tool("get_price", {
+    "symbol": "BTCUSDT",
+    "timestamp": 1234567890,      # ❌ User shouldn't know this
+    "signature": "abc123..."       # ❌ User shouldn't know this
+})
+```
 
-### Naming Conventions
+**With filtering** (✅ Good):
+```python
+# User only sees business parameters
+tool.inputSchema = {
+    "properties": {
+        "symbol": {"type": "string"}  # ✅ Only what matters
+    }
+}
 
-All identifiers are converted to `snake_case`:
-- `getUserById` → `get_user_by_id`
-- `CreateNewOrder` → `create_new_order`
-- `fetch-products` → `fetch_products`
-
-## 🛣️ Roadmap
-
-### Phase 1: Ingestion & Normalization ✅ (Completed)
-- Direct loader calls (no format detection)
-- OpenAPI loader with URL/file support
-- Canonical models
-- Normalization pipeline
-
-### Phase 2: MCP Tool Generation ✅ (Completed)
-- Generate MCP tool definitions from canonical endpoints
-- Tool metadata generation
-- Parameter validation schemas
-- Tool registry with filtering and export
-- JSON Schema conversion for parameter validation
-
-### Phase 3: Runtime Execution Engine ✅ (Completed)
-- REST API call execution with canonical endpoints
-- Authentication handling (API Key, Bearer, Basic, OAuth2)
-- Request building with parameter routing (path/query/header/body)
-- Response processing and parsing (JSON, text)
-- Error handling with automatic retries and exponential backoff
-- Comprehensive authentication options
-
-### Phase 4: Agent-Facing MCP Server ✅ (Completed)
-- Complete MCP server implementation with JSON-RPC 2.0
-- Stdio transport for communication
-- Tool discovery (tools/list) and execution (tools/call)
-- Integration with Claude Desktop and other MCP clients
-- Full pipeline: OpenAPI → Tools → Execution → MCP Server
-
-### Phase 5: Extended Loaders
-- Postman collection loader (URL/file support)
-- GraphQL schema loader
-
-## 📄 License
-
-MIT License - see LICENSE file for details
-
-## 🤝 Contributing
-
-Contributions are welcome! We've completed all core phases (1-4): Ingestion, Tool Generation, Runtime Execution, and MCP Server. Phase 5 focuses on additional loader formats.
-
-Areas for contribution:
-- Additional loaders: Postman, GraphQL (Phase 5)
-- WebSocket transport for MCP server
-- Enhanced normalization logic
-- Additional authentication methods (OAuth2 flow, custom headers)
-- Performance optimizations
-- Documentation improvements
-- Test coverage
-- Real-world use case examples
-
-## 📞 Support
-
-For issues and questions:
-- GitHub Issues: [Issues](https://github.com/pawneetdev/rest-to-mcp-adapter/issues)
-- Discussions: [Discussions](https://github.com/pawneetdev/rest-to-mcp-adapter/discussions)
+# Clean API!
+client.call_tool("get_price", {
+    "symbol": "BTCUSDT"  # ✅ Simple and clear
+})
+# Auth handler adds timestamp and signature automatically
+```
 
 ---
 
-**Built with** ❤️ **for the LLM agent ecosystem**
+## 🏗️ Architecture Overview
+
+```
+OpenAPI Spec (URL/file/content)
+    ↓
+OpenAPILoader → Parses and dereferences $refs
+    ↓
+Normalizer → Converts to CanonicalEndpoint models
+    ↓
+ToolGenerator → Creates MCP tool definitions
+    ↓
+ToolRegistry → Organizes and manages tools
+    ↓
+MCPServer → Exposes tools via JSON-RPC (stdio)
+    ↓
+Claude/GPT → Calls tools
+    ↓
+APIExecutor → Executes actual REST API calls
+    ↓
+Response → Returns to agent
+```
+
+For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+---
+
+## 📚 Examples
+
+### Complete Example: Building a Binance MCP Server
+
+```python
+#!/usr/bin/env python3
+"""Binance API MCP Server"""
+from adapter import (
+    OpenAPILoader, Normalizer, ToolGenerator,
+    ToolRegistry, APIExecutor, MCPServer
+)
+from my_auth import BinanceAuth  # Your custom auth handler
+
+# 1. Load Binance OpenAPI spec
+loader = OpenAPILoader()
+spec = loader.load(
+    "https://raw.githubusercontent.com/binance/binance-api-swagger/master/spot_api.yaml"
+)
+
+# 2. Auto-detect auth parameters
+auto_detected = loader.extract_auth_parameters(spec)
+
+# 3. Normalize endpoints
+normalizer = Normalizer()
+endpoints = normalizer.normalize_openapi(spec)
+print(f"Loaded {len(endpoints)} endpoints")
+
+# 4. Generate tools with auth filtering
+generator = ToolGenerator(
+    api_name="binance",
+    auto_detected_auth_params=auto_detected
+)
+tools = generator.generate_tools(endpoints)
+
+# 5. Create registry
+registry = ToolRegistry(name="Binance Spot API")
+registry.add_tools(tools)
+
+# 6. Set up executor with custom auth
+executor = APIExecutor(
+    base_url="https://api.binance.com",
+    auth=BinanceAuth(
+        api_key="your-key",
+        api_secret="your-secret"
+    )
+)
+
+# 7. Create and run MCP server
+server = MCPServer(
+    name="Binance MCP Server",
+    version="1.0.0",
+    tool_registry=registry,
+    executor=executor,
+    endpoints=endpoints
+)
+
+if __name__ == "__main__":
+    server.run()
+```
+
+### More Examples
+
+See the `examples/` directory for more:
+- `examples/basic_usage.py` - Basic ingestion and normalization
+- `examples/phase2_tool_generation.py` - Tool generation examples
+- `examples/phase3_execution.py` - API execution examples
+- `examples/phase4_mcp_server.py` - MCP server setup
+
+---
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+pytest
+
+# With coverage
+pytest --cov=adapter
+
+# Run specific test
+pytest tests/test_tool_generator.py
+```
+
+---
+
+## 🛣️ Roadmap
+
+- ✅ **Phase 1**: OpenAPI ingestion and normalization
+- ✅ **Phase 2**: MCP tool generation
+- ✅ **Phase 3**: Runtime execution engine
+- ✅ **Phase 4**: MCP server implementation
+- 🔄 **Phase 5**: Additional loaders (Postman, GraphQL)
+- 📋 **Future**: WebSocket transport, enhanced caching
+
+---
+
+## 🤝 Contributing
+
+Contributions welcome! The core library is complete, and we're looking for:
+
+- Additional authentication methods
+- Performance optimizations
+- More loaders (Postman collections, GraphQL schemas)
+- Documentation improvements
+- Real-world usage examples
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+## 🙋 Support
+
+- **Issues**: [GitHub Issues](https://github.com/your-username/rest-to-mcp-adapter/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/your-username/rest-to-mcp-adapter/discussions)
+
+---
+
+**Built with ❤️ for the AI agent ecosystem**

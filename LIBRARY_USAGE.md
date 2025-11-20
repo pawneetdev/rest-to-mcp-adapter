@@ -1,57 +1,65 @@
-# Using REST-to-MCP Adapter as a Library
+# Advanced Library Usage & Reference
 
-This guide shows how to use the REST-to-MCP Adapter as a Python library in your own projects.
+This guide provides advanced usage patterns and comprehensive reference material for the REST-to-MCP Adapter library.
 
-## Installation
+> **Note**: For basic usage and getting started, see the main [README.md](README.md).
 
-### From Source (Development)
+## Table of Contents
 
-```bash
-# Clone the repository
-git clone <repository-url>
-cd rest-to-mcp-adapter
+- [Advanced Tool Generation](#advanced-tool-generation)
+- [Custom Request Configuration](#custom-request-configuration)
+- [Working with Registry](#working-with-registry)
+- [Batch API Calls](#batch-api-calls)
+- [Authentication Parameter Filtering](#authentication-parameter-filtering)
+- [Complete Examples](#complete-examples)
+- [Integration Patterns](#integration-patterns)
+- [API Reference](#api-reference)
+- [Common Patterns](#common-patterns)
+- [Troubleshooting](#troubleshooting)
 
-# Install in editable mode
-pip install -e .
+---
 
-# Or install with development dependencies
-pip install -e ".[dev]"
-```
+## Advanced Tool Generation
 
-### From PyPI (Coming Soon)
+### Filtering Tools During Generation
 
-```bash
-pip install rest-to-mcp-adapter
-```
-
-## Quick Start
-
-### 1. Basic Usage: Create an MCP Server
+Generate only specific tools based on patterns:
 
 ```python
-from adapter import (
-    OpenAPILoader,
-    Normalizer,
-    ToolGenerator,
-    ToolRegistry,
-    APIExecutor,
-    BearerAuth,
-    MCPServer
+from adapter import ToolGenerator
+
+generator = ToolGenerator(api_name="myapi")
+
+# Generate only GET endpoints
+get_tools = generator.generate_tools(
+    endpoints,
+    method_filter="GET"
 )
 
-# Load OpenAPI spec
-loader = OpenAPILoader()
-spec = loader.load("https://api.example.com/openapi.json")
+# Generate first 10 tools only
+limited_tools = generator.generate_tools(
+    endpoints,
+    limit=10
+)
 
-# Normalize endpoints
-normalizer = Normalizer()
-endpoints = normalizer.normalize_openapi(spec)
+# Generate tools matching a path pattern
+user_tools = generator.generate_tools(
+    endpoints,
+    path_pattern=r'/users'
+)
 
-# Generate MCP tools
-generator = ToolGenerator(api_name="myapi")
-tools = generator.generate_tools(endpoints)
+# Combine filters
+filtered_tools = generator.generate_tools(
+    endpoints,
+    method_filter="GET",
+    path_pattern=r'/api/v1',
+    limit=5
+)
+```
 
-# Create registry
+### Tool Name Customization
+
+```python
 registry = ToolRegistry(name="My API")
 registry.add_tools(tools)
 
