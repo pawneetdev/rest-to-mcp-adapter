@@ -175,10 +175,19 @@ class APIExecutor:
                 attempts=0,
             )
 
-        # Apply authentication
+        # Apply authentication (only if endpoint requires it)
         headers = request_details["headers"].copy()
         query_params = request_details["query_params"].copy()
-        self.auth.apply(headers, query_params)
+
+        # Check if endpoint requires authentication
+        # If security is empty/None, endpoint is public and doesn't need auth
+        requires_auth = endpoint.security and len(endpoint.security) > 0
+
+        if requires_auth:
+            logger.debug(f"Endpoint requires authentication: {endpoint.name}")
+            self.auth.apply(headers, query_params)
+        else:
+            logger.debug(f"Endpoint is public (no auth required): {endpoint.name}")
 
         # Log request details for debugging
         logger.debug(f"Request URL: {request_details['url']}")

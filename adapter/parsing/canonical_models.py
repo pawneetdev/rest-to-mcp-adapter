@@ -167,6 +167,10 @@ class CanonicalEndpoint(BaseModel):
         default_factory=list,
         description="Categorization tags",
     )
+    security: List[Dict[str, Any]] = Field(
+        default_factory=list,
+        description="Security requirements (empty list = public endpoint)",
+    )
     deprecated: bool = Field(
         default=False,
         description="Whether this endpoint is deprecated",

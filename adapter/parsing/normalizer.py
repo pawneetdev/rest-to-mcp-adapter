@@ -208,6 +208,11 @@ class Normalizer:
         if not isinstance(tags, list):
             tags = []
 
+        # Extract security requirements
+        security = operation.get("security", [])
+        if not isinstance(security, list):
+            security = []
+
         # Check if deprecated
         deprecated = operation.get("deprecated", False)
 
@@ -221,6 +226,7 @@ class Normalizer:
             body_schema=body_schema,
             response_schema=response_schema,
             tags=tags,
+            security=security,
             deprecated=deprecated,
         )
 

@@ -337,10 +337,23 @@ class ToolGenerator:
         Returns:
             JSON Schema for inputs
         """
-        # Convert parameters to JSON Schema
+        # Authentication parameters that should be handled by auth handlers, not users
+        # These parameters are automatically added by auth implementations like BinanceAuth
+        AUTH_PARAMS = {'signature', 'timestamp', 'recvwindow', 'recv_window', 'api_key', 'apikey'}
+
+        # Filter out authentication parameters
+        filtered_parameters = []
         if endpoint.parameters:
+            for param in endpoint.parameters:
+                # Skip authentication parameters
+                if param.name.lower() in AUTH_PARAMS:
+                    continue
+                filtered_parameters.append(param)
+
+        # Convert parameters to JSON Schema
+        if filtered_parameters:
             schema = self.schema_converter.parameters_to_json_schema(
-                endpoint.parameters,
+                filtered_parameters,
                 group_by_location=self.group_parameters,
             )
         else:
