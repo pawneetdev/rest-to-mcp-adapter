@@ -497,6 +497,92 @@ class OpenAPILoader(BaseLoader):
                 if "version" not in info:
                     raise ValidationError("'info' must contain 'version'")
 
+    def extract_auth_parameters(self, spec_dict: Dict[str, Any]) -> set:
+        """
+        Extract authentication parameter names from OpenAPI security schemes.
+
+        This method parses the securitySchemes section of an OpenAPI spec and
+        identifies parameter names that are used for authentication. These
+        parameters should typically be excluded from user-facing tool schemas
+        since they are managed by authentication handlers.
+
+        Supports:
+        - OpenAPI 3.x: components.securitySchemes
+        - Swagger 2.x: securityDefinitions
+
+        Args:
+            spec_dict: Parsed OpenAPI/Swagger spec dictionary
+
+        Returns:
+            Set of lowercase parameter names used for authentication
+
+        Examples:
+            >>> loader = OpenAPILoader()
+            >>> spec = loader.load("api.yaml")
+            >>> auth_params = loader.extract_auth_parameters(spec)
+            >>> print(auth_params)
+            {'signature', 'timestamp', 'api_key', 'authorization'}
+        """
+        auth_params = set()
+
+        # OpenAPI 3.x: components.securitySchemes
+        if "components" in spec_dict and "securitySchemes" in spec_dict["components"]:
+            security_schemes = spec_dict["components"]["securitySchemes"]
+            auth_params.update(self._extract_from_security_schemes(security_schemes))
+
+        # Swagger 2.x: securityDefinitions
+        elif "securityDefinitions" in spec_dict:
+            security_schemes = spec_dict["securityDefinitions"]
+            auth_params.update(self._extract_from_security_schemes(security_schemes))
+
+        return auth_params
+
+    def _extract_from_security_schemes(self, security_schemes: Dict[str, Any]) -> set:
+        """
+        Extract parameter names from security scheme definitions.
+
+        Args:
+            security_schemes: Security schemes dictionary from OpenAPI spec
+
+        Returns:
+            Set of lowercase parameter names
+        """
+        auth_params = set()
+
+        if not isinstance(security_schemes, dict):
+            return auth_params
+
+        for scheme_name, scheme_def in security_schemes.items():
+            if not isinstance(scheme_def, dict):
+                continue
+
+            scheme_type = scheme_def.get("type", "").lower()
+
+            # apiKey type - has explicit parameter name
+            if scheme_type == "apikey":
+                param_name = scheme_def.get("name", "")
+                if param_name:
+                    auth_params.add(param_name.lower())
+
+            # http type - typically Authorization header or similar
+            elif scheme_type == "http":
+                scheme = scheme_def.get("scheme", "").lower()
+                # Bearer tokens use Authorization header
+                if scheme in ("bearer", "basic", "digest"):
+                    auth_params.add("authorization")
+
+            # oauth2 type - often uses access_token parameter or Authorization header
+            elif scheme_type == "oauth2":
+                auth_params.add("authorization")
+                auth_params.add("access_token")
+                auth_params.add("token")
+
+            # openIdConnect - uses Authorization header
+            elif scheme_type == "openidconnect":
+                auth_params.add("authorization")
+
+        return auth_params
+
     def validate(self, content: str) -> bool:
         """
         Pre-flight validation of content.

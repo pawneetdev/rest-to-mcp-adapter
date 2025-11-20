@@ -82,11 +82,23 @@ class ToolGenerator:
         ...     print(f"Description: {tool.description}")
     """
 
+    # Default authentication parameters that are commonly used across APIs
+    # These will be filtered from tool schemas by default
+    DEFAULT_AUTH_PARAMS = {
+        'signature', 'timestamp', 'recvwindow', 'recv_window',
+        'api_key', 'apikey', 'api_secret', 'apisecret',
+        'access_token', 'accesstoken', 'token',
+        'authorization', 'auth',
+        'nonce', 'sign',
+    }
+
     def __init__(
         self,
         include_metadata: bool = True,
         group_parameters: bool = False,
         api_name: Optional[str] = None,
+        auth_params: Optional[set] = None,
+        auto_detected_auth_params: Optional[set] = None,
     ):
         """
         Initialize the tool generator.
@@ -95,11 +107,47 @@ class ToolGenerator:
             include_metadata: Include REST endpoint metadata in tools
             group_parameters: Group parameters by location (path/query/header)
             api_name: Optional API name to prefix tool names
+            auth_params: Custom set of auth parameter names to filter (overrides defaults)
+                        If None, uses DEFAULT_AUTH_PARAMS + auto_detected_auth_params
+                        If provided, completely replaces the default set
+            auto_detected_auth_params: Auth params extracted from OpenAPI security schemes
+                                      These are merged with defaults unless auth_params overrides
+
+        Examples:
+            >>> # Use defaults + auto-detected params
+            >>> generator = ToolGenerator()
+
+            >>> # Add custom auth params to defaults
+            >>> generator = ToolGenerator(
+            ...     auto_detected_auth_params={'custom_auth_header', 'session_id'}
+            ... )
+
+            >>> # Completely override with custom params only
+            >>> generator = ToolGenerator(
+            ...     auth_params={'my_signature', 'my_timestamp'}
+            ... )
         """
         self.include_metadata = include_metadata
         self.group_parameters = group_parameters
         self.api_name = api_name
         self.schema_converter = SchemaConverter()
+
+        # Determine which auth parameters to filter
+        # Normalize all auth param names: lowercase + convert hyphens to underscores
+        # This matches how the Normalizer converts parameter names
+        def normalize_auth_param(name: str) -> str:
+            return name.lower().replace('-', '_')
+
+        if auth_params is not None:
+            # User provided explicit override - use only those
+            self.auth_params = {normalize_auth_param(p) for p in auth_params}
+        else:
+            # Start with defaults
+            self.auth_params = {normalize_auth_param(p) for p in self.DEFAULT_AUTH_PARAMS}
+
+            # Merge with auto-detected params from OpenAPI security schemes
+            if auto_detected_auth_params:
+                self.auth_params.update(normalize_auth_param(p) for p in auto_detected_auth_params)
 
     def generate_tools(
         self,
@@ -331,22 +379,25 @@ class ToolGenerator:
         """
         Generate JSON Schema for the tool's input parameters.
 
+        Filters out authentication parameters that should be handled by auth handlers,
+        not by end users. The set of filtered parameters is configurable via the
+        constructor and can include:
+        - Default common auth params (signature, timestamp, api_key, etc.)
+        - Auto-detected params from OpenAPI security schemes
+        - Custom user-provided params
+
         Args:
             endpoint: Canonical endpoint
 
         Returns:
-            JSON Schema for inputs
+            JSON Schema for inputs (with auth params filtered out)
         """
-        # Authentication parameters that should be handled by auth handlers, not users
-        # These parameters are automatically added by auth implementations like BinanceAuth
-        AUTH_PARAMS = {'signature', 'timestamp', 'recvwindow', 'recv_window', 'api_key', 'apikey'}
-
         # Filter out authentication parameters
         filtered_parameters = []
         if endpoint.parameters:
             for param in endpoint.parameters:
-                # Skip authentication parameters
-                if param.name.lower() in AUTH_PARAMS:
+                # Skip authentication parameters (case-insensitive comparison)
+                if param.name.lower() in self.auth_params:
                     continue
                 filtered_parameters.append(param)
 

@@ -36,6 +36,7 @@ The **MCP integration layer** provides:
 - **Tool Generator**: Convert canonical endpoints to MCP tool definitions
 - **Schema Converter**: Transform canonical schemas to JSON Schema
 - **Tool Registry**: Manage and organize generated tools
+- **Auth Parameter Filtering**: Hybrid approach (defaults + auto-detect + custom overrides)
 - **Export Functionality**: Export tools to JSON for MCP agents
 
 ### Phase 3: Runtime Execution Engine ✅ (Completed)
