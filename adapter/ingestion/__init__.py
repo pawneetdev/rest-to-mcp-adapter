@@ -6,12 +6,10 @@ Users call the appropriate loader directly for their format.
 
 Available loaders:
 - OpenAPILoader: For OpenAPI/Swagger specs (JSON, YAML, URL, file)
-- HTMLLoader: For HTML documentation (URL or raw HTML)
 """
 
 from .base_loader import BaseLoader, LoaderError, InvalidFormatError, ValidationError
 from .loader_openapi import OpenAPILoader
-from .loader_html import HTMLLoader
 
 __all__ = [
     "BaseLoader",
@@ -19,5 +17,4 @@ __all__ = [
     "InvalidFormatError",
     "ValidationError",
     "OpenAPILoader",
-    "HTMLLoader",
 ]

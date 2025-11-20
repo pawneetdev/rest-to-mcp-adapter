@@ -4,18 +4,15 @@ A production-quality framework for converting **any** REST API documentation int
 
 ## 🎯 Project Vision
 
-This system transforms diverse API documentation formats (OpenAPI, HTML, Postman, GraphQL, PDF, etc.) into a unified canonical format that can be used to generate MCP tools for LLM-powered agents.
+This system transforms diverse API documentation formats (OpenAPI, Postman, GraphQL, etc.) into a unified canonical format that can be used to generate MCP tools for LLM-powered agents.
 
 ### Supported Formats (Planned)
 
 | Format | Phase 1 | Future Phases |
 |--------|---------|---------------|
 | OpenAPI/Swagger (JSON/YAML) | ✅ | - |
-| HTML Documentation | ✅ | LLM extraction + recursive crawling |
 | Postman Collections | - | ✅ |
 | GraphQL Schemas | - | ✅ |
-| Markdown Documentation | - | ✅ |
-| PDF Documentation | - | ✅ |
 
 ## 🚀 Current Status
 
@@ -24,7 +21,6 @@ This system transforms diverse API documentation formats (OpenAPI, HTML, Postman
 The **foundation layer** provides:
 
 - **OpenAPI Loader**: Parse OpenAPI 3.x and Swagger 2.x from URLs, files, or raw content
-- **HTML Loader**: Extract clean text from HTML docs (URLs or raw HTML)
 - **Canonical Models**: Pydantic-based unified data model
 - **Normalizer**: Convert raw data to canonical endpoint format
 - **LangChain Integration**: Optional integration for enhanced parsing
@@ -63,9 +59,7 @@ The **MCP server layer** provides:
 
 ### What's NOT Yet Implemented
 
-- ❌ LLM-based HTML/PDF parsing (Phase 5)
-- ❌ Extended loaders: Postman/GraphQL (Phase 6)
-- ❌ Recursive HTML crawling (Phase 7)
+- ❌ Extended loaders: Postman/GraphQL (Future Phases)
 
 ## ⚠️ Known Limitations
 
@@ -140,7 +134,6 @@ pip install -r requirements.txt
 
 - **pydantic** ≥2.0.0 - Data validation and canonical models
 - **PyYAML** ≥6.0 - YAML parsing
-- **beautifulsoup4** ≥4.12.0 - HTML parsing
 - **requests** ≥2.31.0 - HTTP requests for URL loading
 - **langchain-community** ≥0.0.20 - LangChain integration (optional but recommended)
 
@@ -150,8 +143,7 @@ pip install -r requirements.txt
 adapter/
 ├── ingestion/              # Loaders for different formats
 │   ├── base_loader.py      # Abstract loader interface
-│   ├── loader_openapi.py   # OpenAPI/Swagger loader
-│   └── loader_html.py      # HTML documentation loader
+│   └── loader_openapi.py   # OpenAPI/Swagger loader
 ├── parsing/                # Normalization and canonical models
 │   ├── canonical_models.py # Pydantic models
 │   └── normalizer.py       # Data normalization
@@ -243,51 +235,13 @@ spec = loader.load_from_file("./specs/api.yaml")
 spec = loader.load("./specs/api.yaml")  # Auto-detects file path
 ```
 
-### Example 3: HTML from URL
+### Example 3: Convenience Functions
 
 ```python
-from adapter.ingestion import HTMLLoader
-
-loader = HTMLLoader()
-
-# Load from URL
-clean_text = loader.load_from_url("https://docs.example.com/api")
-
-# Or let it auto-detect
-clean_text = loader.load("https://docs.example.com/api")
-
-# Clean text is ready for LLM extraction (Phase 2)
-print(clean_text)
-```
-
-### Example 4: HTML from Raw Content
-
-```python
-from adapter.ingestion import HTMLLoader
-
-html_content = """
-<html>
-<head><title>API Docs</title></head>
-<body>
-    <h1>GET /api/products</h1>
-    <p>Retrieve all products.</p>
-</body>
-</html>
-"""
-
-loader = HTMLLoader()
-clean_text = loader.load(html_content)
-print(clean_text)  # Scripts, styles, nav removed
-```
-
-### Example 5: Convenience Functions
-
-```python
-from adapter.pipeline import load_openapi, load_html
+from adapter.pipeline import load_openapi
 
 # Quick prototyping
 spec = load_openapi("https://api.example.com/openapi.json")
-text = load_html("https://docs.example.com/api")
 ```
 
 ### Complete Examples
@@ -584,11 +538,10 @@ python examples/phase4_mcp_server.py complete
 The adapter uses a **simple, explicit design** - users call the appropriate loader directly:
 
 ```python
-from adapter.ingestion import OpenAPILoader, HTMLLoader
+from adapter.ingestion import OpenAPILoader
 
 # Call the right loader for your format
 openapi_loader = OpenAPILoader()
-html_loader = HTMLLoader()
 ```
 
 **Why no format detection?**
@@ -646,41 +599,6 @@ spec = loader.load("https://api.example.com/openapi.json")  # Detects URL
 spec = loader.load("./specs/api.yaml")  # Detects file
 spec = loader.load('{"openapi": "3.0.0"}')  # Detects content
 ```
-
-### HTML Loader
-
-```python
-loader = HTMLLoader()
-
-# From URL
-text = loader.load_from_url("https://docs.example.com/api")
-
-# From raw HTML
-text = loader.load(html_content)
-
-# Auto-detect
-text = loader.load("https://docs.example.com/api")  # Detects URL
-text = loader.load("<html>...</html>")  # Detects content
-```
-
-## 🔄 Future Enhancement: Recursive HTML Crawling
-
-The HTML loader can be extended to **recursively crawl** linked documentation pages to discover all API endpoints across an entire documentation site:
-
-```python
-# Future API (not yet implemented)
-loader = HTMLLoader(recursive=True, max_depth=3)
-all_content = loader.load_from_url("https://docs.api.com")
-# Would crawl all linked pages and aggregate content
-```
-
-**How it would work:**
-1. Start at the root documentation URL
-2. Extract all internal links
-3. Recursively follow links up to max_depth
-4. Deduplicate URLs to avoid re-processing
-5. Aggregate content from all pages
-6. Return combined, cleaned text ready for LLM extraction
 
 ## 📊 Canonical Data Model
 
@@ -741,7 +659,7 @@ All identifiers are converted to `snake_case`:
 
 ### Phase 1: Ingestion & Normalization ✅ (Completed)
 - Direct loader calls (no format detection)
-- OpenAPI/HTML loaders with URL/file support
+- OpenAPI loader with URL/file support
 - Canonical models
 - Normalization pipeline
 
@@ -767,23 +685,9 @@ All identifiers are converted to `snake_case`:
 - Integration with Claude Desktop and other MCP clients
 - Full pipeline: OpenAPI → Tools → Execution → MCP Server
 
-### Phase 5: LLM-Based Extraction
-- HTML → structured endpoints (via LLM)
-- PDF → structured endpoints (via LLM)
-- Markdown → structured endpoints (via LLM)
-- Unstructured docs → structured endpoints
-
-### Phase 6: Extended Loaders
+### Phase 5: Extended Loaders
 - Postman collection loader (URL/file support)
 - GraphQL schema loader
-- Markdown documentation loader
-- PDF documentation loader (with LLM extraction)
-
-### Phase 7: HTML Recursive Crawling
-- Implement recursive crawling for HTML loaders
-- Follow internal links across documentation sites
-- Deduplicate and aggregate content
-- Support configurable crawl depth and URL filtering
 
 ## 📄 License
 
@@ -791,12 +695,10 @@ MIT License - see LICENSE file for details
 
 ## 🤝 Contributing
 
-Contributions are welcome! We've completed all core phases (1-4): Ingestion, Tool Generation, Runtime Execution, and MCP Server. Phase 5+ focuses on advanced features.
+Contributions are welcome! We've completed all core phases (1-4): Ingestion, Tool Generation, Runtime Execution, and MCP Server. Phase 5 focuses on additional loader formats.
 
 Areas for contribution:
-- LLM-based extraction for HTML/PDF/Markdown docs (Phase 5)
-- Additional loaders: Postman, GraphQL, etc. (Phase 6)
-- Recursive HTML crawling implementation (Phase 7)
+- Additional loaders: Postman, GraphQL (Phase 5)
 - WebSocket transport for MCP server
 - Enhanced normalization logic
 - Additional authentication methods (OAuth2 flow, custom headers)

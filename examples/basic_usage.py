@@ -8,7 +8,7 @@ Run this example:
     python examples/basic_usage.py
 """
 
-from adapter.ingestion import OpenAPILoader, HTMLLoader
+from adapter.ingestion import OpenAPILoader
 from adapter.parsing import Normalizer
 
 
@@ -133,124 +133,33 @@ def example_3_openapi_from_file():
     print()
 
 
-def example_4_html_from_raw_content():
-    """Example 4: Load HTML documentation from raw content."""
+def example_4_convenience_functions():
+    """Example 4: Using convenience functions."""
     print("=" * 60)
-    print("Example 4: HTML from Raw Content")
-    print("=" * 60)
-
-    # Sample HTML API documentation
-    html_content = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>API Documentation</title>
-    <style>
-        body { font-family: Arial; }
-        .nav { background: blue; }
-    </style>
-    <script>
-        console.log("This script will be removed");
-    </script>
-</head>
-<body>
-    <nav class="nav">Navigation (will be removed)</nav>
-
-    <h1>API Documentation</h1>
-
-    <h2>GET /api/products</h2>
-    <p>Retrieve a list of all products.</p>
-
-    <h3>Query Parameters</h3>
-    <ul>
-        <li><strong>category</strong> (string): Filter by category</li>
-        <li><strong>limit</strong> (integer): Maximum number of results</li>
-    </ul>
-
-    <h3>Response</h3>
-    <pre>
-    {
-        "products": [
-            {"id": 1, "name": "Product A"},
-            {"id": 2, "name": "Product B"}
-        ]
-    }
-    </pre>
-
-    <h2>POST /api/orders</h2>
-    <p>Create a new order.</p>
-
-    <footer>Copyright 2024 (will be removed)</footer>
-</body>
-</html>
-"""
-
-    # Load and clean the HTML
-    loader = HTMLLoader()
-    clean_text = loader.load(html_content)
-
-    print(f"\nCleaned text preview (first 400 chars):")
-    print("-" * 60)
-    print(clean_text[:400])
-    print("-" * 60)
-    print("\nNote: Scripts, styles, nav, and footer removed.")
-    print("This clean text is ready for LLM-based extraction (Phase 2).")
-
-    print()
-
-
-def example_5_html_from_url():
-    """Example 5: Load HTML documentation from a URL."""
-    print("=" * 60)
-    print("Example 5: HTML from URL")
+    print("Example 4: Convenience Functions (Quick Prototyping)")
     print("=" * 60)
 
-    # Example URL (replace with actual API docs URL)
-    url = "https://example.com/api-docs"
-
-    print(f"\nHTML loader URL API:")
-    print("  loader = HTMLLoader()")
-    print(f"  text = loader.load_from_url('{url}')")
-    print("  # or simply")
-    print(f"  text = loader.load('{url}')  # Auto-detects URL")
-    print("\nFuture Enhancement:")
-    print("  The loader can be extended to recursively crawl linked")
-    print("  documentation pages to discover all API endpoints.")
-
-    print()
-
-
-def example_6_convenience_functions():
-    """Example 6: Using convenience functions."""
-    print("=" * 60)
-    print("Example 6: Convenience Functions (Quick Prototyping)")
-    print("=" * 60)
-
-    from adapter.pipeline import load_openapi, load_html
+    from adapter.pipeline import load_openapi
 
     print("\nFor quick prototyping, use convenience functions:")
     print()
-    print("  from adapter.pipeline import load_openapi, load_html")
+    print("  from adapter.pipeline import load_openapi")
     print()
     print("  # Load OpenAPI")
     print("  spec = load_openapi('https://api.example.com/openapi.json')")
     print("  spec = load_openapi('./specs/api.yaml')")
     print("  spec = load_openapi(raw_yaml_content)")
     print()
-    print("  # Load HTML")
-    print("  text = load_html('https://docs.example.com/api')")
-    print("  text = load_html(raw_html_content)")
-    print()
     print("For production code, use the loader classes directly:")
-    print("  from adapter.ingestion import OpenAPILoader, HTMLLoader")
+    print("  from adapter.ingestion import OpenAPILoader")
 
     print()
 
 
-def example_7_normalize_to_canonical():
-    """Example 7: Complete workflow - Load & Normalize."""
+def example_5_normalize_to_canonical():
+    """Example 5: Complete workflow - Load & Normalize."""
     print("=" * 60)
-    print("Example 7: Complete Workflow (Load + Normalize)")
+    print("Example 5: Complete Workflow (Load + Normalize)")
     print("=" * 60)
 
     openapi_spec = """
@@ -317,10 +226,8 @@ if __name__ == "__main__":
     example_1_openapi_from_raw_content()
     example_2_openapi_from_url()
     example_3_openapi_from_file()
-    example_4_html_from_raw_content()
-    example_5_html_from_url()
-    example_6_convenience_functions()
-    example_7_normalize_to_canonical()
+    example_4_convenience_functions()
+    example_5_normalize_to_canonical()
 
     print("=" * 60)
     print("All examples completed!")
