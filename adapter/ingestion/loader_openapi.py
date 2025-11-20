@@ -239,6 +239,9 @@ class OpenAPILoader(BaseLoader):
                 if self.strict:
                     raise ValidationError(f"LangChain validation failed: {e}")
 
+        # Dereference $ref pointers
+        spec_dict = self._dereference_spec(spec_dict)
+
         # Validate the spec structure
         self._validate_spec(spec_dict)
 
@@ -308,6 +311,137 @@ class OpenAPILoader(BaseLoader):
                 "LangChain not available. Install with: "
                 "uv add langchain-community"
             )
+
+    def _dereference_spec(self, spec: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Dereference all $ref pointers in the OpenAPI spec.
+
+        This method recursively walks through the spec and replaces all
+        {'$ref': '...'} references with the actual definitions from components.
+
+        Args:
+            spec: OpenAPI spec dictionary
+
+        Returns:
+            Spec with all $ref pointers resolved
+
+        Examples:
+            >>> # Before: {'$ref': '#/components/parameters/timestamp'}
+            >>> # After: {'name': 'timestamp', 'in': 'query', 'type': 'integer', ...}
+        """
+        # Track visited references to detect circular references
+        visited = set()
+
+        def resolve_ref(ref_path: str, root: Dict[str, Any]) -> Any:
+            """
+            Resolve a JSON Pointer reference like '#/components/parameters/timestamp'.
+
+            Args:
+                ref_path: The $ref path to resolve
+                root: The root spec document
+
+            Returns:
+                The resolved definition
+
+            Raises:
+                ValueError: If reference cannot be resolved
+            """
+            # Check for circular reference
+            if ref_path in visited:
+                raise ValueError(f"Circular reference detected: {ref_path}")
+
+            visited.add(ref_path)
+
+            # Only handle internal references (starting with #/)
+            if not ref_path.startswith("#/"):
+                # External references not supported yet
+                return {"$ref": ref_path}
+
+            # Parse the path (e.g., "#/components/parameters/timestamp")
+            # Remove the leading '#/'
+            path_parts = ref_path[2:].split("/")
+
+            # Navigate through the spec to find the definition
+            current = root
+            for part in path_parts:
+                # Handle escaped characters in JSON Pointer
+                part = part.replace("~1", "/").replace("~0", "~")
+
+                if isinstance(current, dict):
+                    if part not in current:
+                        raise ValueError(f"Reference not found: {ref_path} (missing key: {part})")
+                    current = current[part]
+                elif isinstance(current, list):
+                    try:
+                        index = int(part)
+                        current = current[index]
+                    except (ValueError, IndexError):
+                        raise ValueError(f"Invalid array reference: {ref_path} (index: {part})")
+                else:
+                    raise ValueError(f"Cannot navigate through {type(current)} at {ref_path}")
+
+            # Recursively dereference the resolved definition
+            resolved = dereference_value(current, root)
+
+            visited.remove(ref_path)
+            return resolved
+
+        def dereference_value(value: Any, root: Dict[str, Any]) -> Any:
+            """
+            Recursively dereference a value.
+
+            Args:
+                value: The value to dereference (can be dict, list, or primitive)
+                root: The root spec document
+
+            Returns:
+                The dereferenced value
+            """
+            if isinstance(value, dict):
+                # Check if this is a $ref object
+                if "$ref" in value and len(value) == 1:
+                    # This is a pure reference, resolve it
+                    return resolve_ref(value["$ref"], root)
+                elif "$ref" in value:
+                    # This is a reference with additional properties (allOf pattern)
+                    # Resolve the reference and merge with other properties
+                    ref_resolved = resolve_ref(value["$ref"], root)
+                    result = {}
+
+                    # Start with resolved reference
+                    if isinstance(ref_resolved, dict):
+                        result.update(ref_resolved)
+
+                    # Override with local properties (excluding $ref)
+                    for key, val in value.items():
+                        if key != "$ref":
+                            result[key] = dereference_value(val, root)
+
+                    return result
+                else:
+                    # Regular dict, recursively dereference all values
+                    return {key: dereference_value(val, root) for key, val in value.items()}
+
+            elif isinstance(value, list):
+                # Recursively dereference all items
+                return [dereference_value(item, root) for item in value]
+
+            else:
+                # Primitive value, return as-is
+                return value
+
+        # Start dereferencing from the root
+        try:
+            return dereference_value(spec, spec)
+        except Exception as e:
+            # If dereferencing fails and we're in strict mode, raise
+            if self.strict:
+                raise ValidationError(f"Failed to dereference spec: {e}")
+            # Otherwise, return original spec with a warning
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Failed to dereference spec: {e}. Continuing with partial dereferencing.")
+            return spec
 
     def _validate_spec(self, spec_dict: Dict[str, Any]) -> None:
         """
