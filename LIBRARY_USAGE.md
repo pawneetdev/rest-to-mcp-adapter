@@ -348,6 +348,103 @@ for result in results:
         print(f"{result.endpoint_name}: {result.response.data}")
 ```
 
+### Authentication Parameter Filtering
+
+The adapter automatically filters authentication parameters from tool schemas so they don't appear as user-facing parameters. This uses a **hybrid approach** combining:
+
+1. **Default common auth params** (signature, timestamp, api_key, authorization, etc.)
+2. **Auto-detected params** from OpenAPI security schemes
+3. **Custom overrides** for API-specific requirements
+
+#### Automatic Filtering (Recommended)
+
+```python
+from adapter import OpenAPILoader, Normalizer, ToolGenerator
+
+# Load OpenAPI spec
+loader = OpenAPILoader()
+spec = loader.load("https://api.example.com/openapi.yaml")
+
+# Auto-detect auth parameters from security schemes
+auth_params = loader.extract_auth_parameters(spec)
+print(f"Auto-detected: {auth_params}")
+# Output: {'x-api-key', 'signature', 'authorization'}
+
+# Normalize endpoints
+normalizer = Normalizer()
+endpoints = normalizer.normalize_openapi(spec)
+
+# Generate tools with auto-detected + default auth params
+generator = ToolGenerator(
+    api_name="myapi",
+    auto_detected_auth_params=auth_params  # Merged with defaults
+)
+tools = generator.generate_tools(endpoints)
+
+# Auth parameters are automatically filtered from tool schemas
+# Users only see business parameters (symbol, quantity, etc.)
+```
+
+#### Custom Auth Parameter Override
+
+```python
+# Override defaults completely with custom auth params
+generator = ToolGenerator(
+    api_name="myapi",
+    auth_params={'my_signature', 'my_timestamp', 'my_nonce'}  # Only these filtered
+)
+```
+
+#### Supported Security Scheme Types
+
+The adapter automatically extracts auth parameters from these OpenAPI security types:
+
+- **apiKey**: Extracts the explicit parameter name
+  ```yaml
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-KEY  # ← Extracted
+  ```
+
+- **http** (bearer/basic/digest): Adds `authorization`
+  ```yaml
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer  # ← Adds "authorization"
+  ```
+
+- **oauth2**: Adds `authorization`, `access_token`, `token`
+- **openIdConnect**: Adds `authorization`
+
+#### Default Auth Parameters
+
+These common auth parameters are filtered by default:
+
+```python
+DEFAULT_AUTH_PARAMS = {
+    'signature', 'timestamp', 'recvwindow', 'recv_window',
+    'api_key', 'apikey', 'api_secret', 'apisecret',
+    'access_token', 'accesstoken', 'token',
+    'authorization', 'auth',
+    'nonce', 'sign',
+}
+```
+
+#### Why Filter Auth Parameters?
+
+Auth parameters should be handled by authentication handlers (like `BinanceAuth`, `BearerAuth`), not by end users:
+
+```python
+# ❌ Without filtering - users would need to provide auth params
+tool_call(symbol="BTCUSDT", timestamp=1234567890, signature="abc123...")
+
+# ✓ With filtering - auth handler adds them automatically
+tool_call(symbol="BTCUSDT")  # Clean API!
+```
+
 ## Complete Example: Dataforseo API
 
 ```python
