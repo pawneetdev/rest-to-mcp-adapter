@@ -22,7 +22,9 @@ Binance uses **API Key + Secret** authentication with HMAC SHA256 signatures:
 
 ### Option 1: Simple Server (Recommended)
 
-The simple server regenerates tools on startup:
+The simple server regenerates tools on startup. You can provide credentials in two ways:
+
+#### Method A: Using Environment Variables
 
 ```bash
 # For public endpoints only (no authentication)
@@ -34,17 +36,49 @@ export BINANCE_API_SECRET="your_secret_key_here"
 python run_binance_simple.py
 ```
 
+#### Method B: Using Config File (Easier for Development)
+
+```bash
+# Copy the example config file
+cp binance_config.json.example binance_config.json
+
+# Edit the config file with your credentials
+nano binance_config.json
+# or
+vim binance_config.json
+
+# Run the server (credentials loaded automatically)
+python run_binance_simple.py
+```
+
+**Config file format** (`binance_config.json`):
+```json
+{
+  "api_key": "your_binance_api_key_here",
+  "api_secret": "your_binance_api_secret_here",
+  "base_url": "https://api.binance.com",
+  "recv_window": 5000
+}
+```
+
+**Priority**: Environment variables take precedence over config file. This allows you to override config file settings when needed.
+
 ### Option 2: Pre-generated Registry Server
 
-The registry server uses cached tools for faster startup:
+The registry server uses cached tools for faster startup. Same credential options as Option 1:
 
 ```bash
 # Step 1: Generate the registry (run once)
 python generate_binance_registry.py
 
 # Step 2: Run the server
+
+# Method A: Using environment variables
 export BINANCE_API_KEY="your_api_key_here"
 export BINANCE_API_SECRET="your_secret_key_here"
+python run_binance_server.py
+
+# Method B: Using config file (create binance_config.json first)
 python run_binance_server.py
 ```
 
@@ -75,13 +109,21 @@ Examples:
 ## Security Best Practices
 
 1. **Never commit credentials** to version control
-2. **Use environment variables** for API keys
+   - `binance_config.json` is in `.gitignore` - it will NOT be committed
+   - Only `binance_config.json.example` (without real credentials) is tracked
+2. **Choose the right credential method**:
+   - **Config file** (`binance_config.json`): Good for local development
+   - **Environment variables**: Better for production/containers/CI
 3. **Restrict API permissions** on Binance:
    - Enable only needed permissions (read, trade, withdraw)
    - Set IP whitelist if possible
    - Enable 2FA on your Binance account
 4. **Rotate keys regularly**
 5. **Monitor API usage** in Binance dashboard
+6. **File permissions** (if using config file):
+   ```bash
+   chmod 600 binance_config.json  # Only you can read/write
+   ```
 
 ## Testing the Setup
 
@@ -95,16 +137,22 @@ curl https://api.binance.com/api/v3/ping
 Test with authenticated endpoint:
 
 ```bash
-# Set your credentials
+# Option 1: Using environment variables
 export BINANCE_API_KEY="your_api_key"
 export BINANCE_API_SECRET="your_secret"
-
-# Run the server
 python run_binance_simple.py
 
-# The server will show:
-# ✓ Found Binance API credentials in environment
-# Auth: Authenticated (API Key + HMAC SHA256)
+# Option 2: Using config file
+cp binance_config.json.example binance_config.json
+# Edit binance_config.json with your credentials
+python run_binance_simple.py
+
+# The server will show one of:
+# ✓ Loaded credentials from environment variables
+#   Auth: Authenticated (API Key + HMAC SHA256)
+# OR
+# ✓ Loaded credentials from binance_config.json
+#   Auth: Authenticated (API Key + HMAC SHA256)
 ```
 
 ## API Rate Limits

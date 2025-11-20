@@ -37,6 +37,7 @@ env/
 *.json
 !examples/*.json
 !**/package*.json
+!*.json.example
 
 # OS
 .DS_Store
