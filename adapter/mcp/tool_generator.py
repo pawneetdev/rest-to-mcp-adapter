@@ -104,26 +104,78 @@ class ToolGenerator:
     def generate_tools(
         self,
         endpoints: List[CanonicalEndpoint],
+        limit: Optional[int] = None,
+        path_pattern: Optional[str] = None,
+        method_filter: Optional[str] = None,
     ) -> List[MCPTool]:
         """
         Generate MCP tools from a list of canonical endpoints.
 
         Args:
             endpoints: List of normalized endpoints
+            limit: Optional maximum number of tools to generate
+            path_pattern: Optional regex pattern to filter endpoints by path
+            method_filter: Optional HTTP method filter (GET, POST, etc.)
 
         Returns:
             List of MCP tool definitions
 
         Examples:
             >>> generator = ToolGenerator()
+            >>> # Generate all tools
             >>> tools = generator.generate_tools(endpoints)
-            >>> print(f"Generated {len(tools)} tools")
+            >>>
+            >>> # Generate only first 10 tools
+            >>> tools = generator.generate_tools(endpoints, limit=10)
+            >>>
+            >>> # Generate only GET endpoints
+            >>> tools = generator.generate_tools(endpoints, method_filter='GET')
+            >>>
+            >>> # Generate tools for /users path
+            >>> tools = generator.generate_tools(endpoints, path_pattern=r'/users')
+            >>>
+            >>> # Combine filters
+            >>> tools = generator.generate_tools(
+            ...     endpoints,
+            ...     method_filter='GET',
+            ...     path_pattern=r'/users',
+            ...     limit=5
+            ... )
         """
+        import re
+
         tools = []
+        count = 0
+
+        # Compile regex if pattern provided
+        path_regex = None
+        if path_pattern:
+            try:
+                path_regex = re.compile(path_pattern, re.IGNORECASE)
+            except re.error as e:
+                raise ValueError(f"Invalid path pattern: {e}")
+
+        # Normalize method filter
+        if method_filter:
+            method_filter = method_filter.upper()
 
         for endpoint in endpoints:
+            # Apply method filter
+            if method_filter and endpoint.method != method_filter:
+                continue
+
+            # Apply path pattern filter
+            if path_regex and not path_regex.search(endpoint.path):
+                continue
+
+            # Generate tool
             tool = self.generate_tool(endpoint)
             tools.append(tool)
+            count += 1
+
+            # Apply limit
+            if limit is not None and count >= limit:
+                break
 
         return tools
 
@@ -163,15 +215,19 @@ class ToolGenerator:
             metadata=metadata,
         )
 
-    def _generate_tool_name(self, endpoint: CanonicalEndpoint) -> str:
+    def _generate_tool_name(self, endpoint: CanonicalEndpoint, max_length: int = 64) -> str:
         """
         Generate a unique tool name for the endpoint.
 
+        Tool names must not exceed max_length characters (default 64 for MCP).
+        If a name is too long, it will be intelligently truncated.
+
         Args:
             endpoint: Canonical endpoint
+            max_length: Maximum allowed length for tool names (default: 64)
 
         Returns:
-            Tool name (snake_case)
+            Tool name (snake_case, <= max_length chars)
         """
         base_name = endpoint.name
 
@@ -179,9 +235,65 @@ class ToolGenerator:
         if self.api_name:
             # Convert API name to snake_case
             api_prefix = self.api_name.lower().replace(" ", "_").replace("-", "_")
-            return f"{api_prefix}_{base_name}"
+            full_name = f"{api_prefix}_{base_name}"
+        else:
+            full_name = base_name
 
-        return base_name
+        # Check if name exceeds max length
+        if len(full_name) <= max_length:
+            return full_name
+
+        # Name is too long - truncate intelligently
+        # Strategy: Keep the prefix, method, and key path components
+        # Remove version numbers and intermediate path segments
+
+        parts = full_name.split("_")
+
+        # Keep the API prefix if present
+        if self.api_name:
+            prefix = parts[0]  # e.g., "binance"
+            remaining_parts = parts[1:]
+        else:
+            prefix = ""
+            remaining_parts = parts
+
+        # Keep the HTTP method (first part after prefix)
+        method = remaining_parts[0] if remaining_parts else ""
+        path_parts = remaining_parts[1:] if len(remaining_parts) > 1 else []
+
+        # Remove version numbers (v1, v2, v3, etc.) and "api" keywords
+        filtered_parts = [
+            p for p in path_parts
+            if not (p.startswith("v") and p[1:].isdigit()) and p not in ("api", "sapi")
+        ]
+
+        # Build the truncated name
+        if prefix:
+            truncated = f"{prefix}_{method}"
+        else:
+            truncated = method
+
+        # Add path components until we approach the limit
+        # Leave room for potential numeric suffix if needed
+        available_length = max_length - len(truncated) - 5  # Reserve 5 chars for safety
+
+        for part in filtered_parts:
+            if len(truncated) + len(part) + 1 <= max_length - 3:
+                truncated += f"_{part}"
+            else:
+                # Abbreviate the part if it's very long
+                if len(part) > 8:
+                    truncated += f"_{part[:6]}"
+                    break
+                else:
+                    truncated += f"_{part}"
+                    break
+
+        # Final check - if still too long, hard truncate
+        if len(truncated) > max_length:
+            truncated = truncated[:max_length]
+
+        return truncated
 
     def _generate_description(self, endpoint: CanonicalEndpoint) -> str:
         """

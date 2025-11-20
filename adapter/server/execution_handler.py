@@ -81,12 +81,13 @@ class ExecutionHandler:
         """
         for tool in self.tool_provider.registry.get_all_tools():
             # Find matching endpoint
-            # Tool names follow pattern: {api_name}_{endpoint_name}
+            # Tool names follow pattern: {api_name}_{endpoint_name} or just {endpoint_name}
             # We need to match against endpoint.name
 
             for endpoint in self.endpoints:
-                # Simple match: if endpoint name is in tool name
-                if endpoint.name in tool.name:
+                # Exact match: tool name is either endpoint.name or {prefix}_{endpoint.name}
+                # This prevents false matches like "get_user" matching "get_user_profile"
+                if tool.name == endpoint.name or tool.name.endswith(f"_{endpoint.name}"):
                     self._tool_endpoint_map[tool.name] = endpoint
                     break
 

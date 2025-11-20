@@ -6,7 +6,8 @@ The registry acts as a central manager for all generated tools.
 """
 
 import json
-from typing import Any, Dict, List, Optional, Set
+import re
+from typing import Any, Dict, List, Optional, Set, Pattern
 
 from .tool_generator import MCPTool
 
@@ -113,14 +114,20 @@ class ToolRegistry:
         """
         return self._tools.get(name)
 
-    def get_all_tools(self) -> List[MCPTool]:
+    def get_all_tools(self, limit: Optional[int] = None) -> List[MCPTool]:
         """
         Get all tools in the registry.
 
+        Args:
+            limit: Optional maximum number of tools to return
+
         Returns:
-            List of all MCP tools
+            List of all MCP tools (limited if specified)
         """
-        return list(self._tools.values())
+        tools = list(self._tools.values())
+        if limit is not None and limit > 0:
+            return tools[:limit]
+        return tools
 
     def get_tool_names(self) -> List[str]:
         """
@@ -131,33 +138,37 @@ class ToolRegistry:
         """
         return list(self._tools.keys())
 
-    def get_tools_by_tag(self, tag: str) -> List[MCPTool]:
+    def get_tools_by_tag(self, tag: str, limit: Optional[int] = None) -> List[MCPTool]:
         """
         Get all tools with a specific tag.
 
         Args:
             tag: Tag to filter by
+            limit: Optional maximum number of tools to return
 
         Returns:
-            List of tools with the tag
+            List of tools with the tag (limited if specified)
         """
         tools = []
         for tool in self._tools.values():
             if tool.metadata and "tags" in tool.metadata:
                 if tag in tool.metadata["tags"]:
                     tools.append(tool)
+                    if limit is not None and len(tools) >= limit:
+                        break
 
         return tools
 
-    def get_tools_by_method(self, method: str) -> List[MCPTool]:
+    def get_tools_by_method(self, method: str, limit: Optional[int] = None) -> List[MCPTool]:
         """
         Get all tools for a specific HTTP method.
 
         Args:
             method: HTTP method (GET, POST, etc.)
+            limit: Optional maximum number of tools to return
 
         Returns:
-            List of tools with the method
+            List of tools with the method (limited if specified)
         """
         method = method.upper()
         tools = []
@@ -165,18 +176,21 @@ class ToolRegistry:
         for tool in self._tools.values():
             if tool.metadata and tool.metadata.get("method") == method:
                 tools.append(tool)
+                if limit is not None and len(tools) >= limit:
+                    break
 
         return tools
 
-    def search_tools(self, query: str) -> List[MCPTool]:
+    def search_tools(self, query: str, limit: Optional[int] = None) -> List[MCPTool]:
         """
         Search tools by name or description.
 
         Args:
             query: Search query (case-insensitive)
+            limit: Optional maximum number of tools to return
 
         Returns:
-            List of matching tools
+            List of matching tools (limited if specified)
         """
         query_lower = query.lower()
         tools = []
@@ -185,12 +199,185 @@ class ToolRegistry:
             # Search in name
             if query_lower in tool.name.lower():
                 tools.append(tool)
+                if limit is not None and len(tools) >= limit:
+                    break
                 continue
 
             # Search in description
             if query_lower in tool.description.lower():
                 tools.append(tool)
+                if limit is not None and len(tools) >= limit:
+                    break
                 continue
+
+        return tools
+
+    def filter_by_pattern(
+        self,
+        pattern: str,
+        field: str = "name",
+        limit: Optional[int] = None
+    ) -> List[MCPTool]:
+        """
+        Filter tools using regex pattern matching.
+
+        Args:
+            pattern: Regular expression pattern
+            field: Field to match against ('name', 'description', 'path', or 'all')
+            limit: Optional maximum number of tools to return
+
+        Returns:
+            List of tools matching the pattern (limited if specified)
+
+        Examples:
+            >>> # Get all tools containing 'user' or 'users'
+            >>> registry.filter_by_pattern(r'users?', field='name')
+            >>>
+            >>> # Get tools with specific path pattern
+            >>> registry.filter_by_pattern(r'/v[0-9]+/users/', field='path')
+            >>>
+            >>> # Get first 5 GET endpoints
+            >>> registry.filter_by_pattern(r'^.*get.*$', field='name', limit=5)
+        """
+        try:
+            regex = re.compile(pattern, re.IGNORECASE)
+        except re.error as e:
+            raise ValueError(f"Invalid regex pattern: {e}")
+
+        tools = []
+
+        for tool in self._tools.values():
+            matched = False
+
+            if field == "name" or field == "all":
+                if regex.search(tool.name):
+                    matched = True
+
+            if not matched and (field == "description" or field == "all"):
+                if regex.search(tool.description):
+                    matched = True
+
+            if not matched and (field == "path" or field == "all"):
+                if tool.metadata and "path" in tool.metadata:
+                    if regex.search(tool.metadata["path"]):
+                        matched = True
+
+            if matched:
+                tools.append(tool)
+                if limit is not None and len(tools) >= limit:
+                    break
+
+        return tools
+
+    def filter_by_path_pattern(
+        self,
+        path_pattern: str,
+        limit: Optional[int] = None
+    ) -> List[MCPTool]:
+        """
+        Filter tools by URL path pattern.
+
+        This is a convenience method for filtering by path specifically.
+
+        Args:
+            path_pattern: Regular expression pattern for URL path
+            limit: Optional maximum number of tools to return
+
+        Returns:
+            List of tools with matching paths (limited if specified)
+
+        Examples:
+            >>> # Get all API v1 endpoints
+            >>> registry.filter_by_path_pattern(r'/v1/')
+            >>>
+            >>> # Get all user-related endpoints
+            >>> registry.filter_by_path_pattern(r'/users?(/|$)')
+            >>>
+            >>> # Get endpoints with path parameters
+            >>> registry.filter_by_path_pattern(r'\{[^}]+\}')
+        """
+        return self.filter_by_pattern(path_pattern, field="path", limit=limit)
+
+    def get_tools(
+        self,
+        method: Optional[str] = None,
+        tag: Optional[str] = None,
+        pattern: Optional[str] = None,
+        pattern_field: str = "name",
+        limit: Optional[int] = None
+    ) -> List[MCPTool]:
+        """
+        Get tools with multiple filtering criteria.
+
+        This is a comprehensive filter method that combines multiple filters.
+
+        Args:
+            method: Optional HTTP method filter (GET, POST, etc.)
+            tag: Optional tag filter
+            pattern: Optional regex pattern
+            pattern_field: Field to match pattern against ('name', 'description', 'path', 'all')
+            limit: Optional maximum number of tools to return
+
+        Returns:
+            List of tools matching all specified criteria (limited if specified)
+
+        Examples:
+            >>> # Get first 10 GET endpoints with 'user' in name
+            >>> registry.get_tools(method='GET', pattern=r'user', limit=10)
+            >>>
+            >>> # Get POST endpoints tagged 'admin'
+            >>> registry.get_tools(method='POST', tag='admin')
+            >>>
+            >>> # Get tools matching path pattern with limit
+            >>> registry.get_tools(pattern=r'/v1/.*', pattern_field='path', limit=5)
+        """
+        # Start with all tools
+        tools = list(self._tools.values())
+
+        # Filter by method
+        if method:
+            method = method.upper()
+            tools = [t for t in tools if t.metadata and t.metadata.get("method") == method]
+
+        # Filter by tag
+        if tag:
+            tools = [
+                t for t in tools
+                if t.metadata and "tags" in t.metadata and tag in t.metadata["tags"]
+            ]
+
+        # Filter by pattern
+        if pattern:
+            try:
+                regex = re.compile(pattern, re.IGNORECASE)
+                filtered_tools = []
+
+                for tool in tools:
+                    matched = False
+
+                    if pattern_field == "name" or pattern_field == "all":
+                        if regex.search(tool.name):
+                            matched = True
+
+                    if not matched and (pattern_field == "description" or pattern_field == "all"):
+                        if regex.search(tool.description):
+                            matched = True
+
+                    if not matched and (pattern_field == "path" or pattern_field == "all"):
+                        if tool.metadata and "path" in tool.metadata:
+                            if regex.search(tool.metadata["path"]):
+                                matched = True
+
+                    if matched:
+                        filtered_tools.append(tool)
+
+                tools = filtered_tools
+            except re.error as e:
+                raise ValueError(f"Invalid regex pattern: {e}")
+
+        # Apply limit
+        if limit is not None and limit > 0:
+            tools = tools[:limit]
 
         return tools
 

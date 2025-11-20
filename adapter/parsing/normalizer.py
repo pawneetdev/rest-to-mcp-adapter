@@ -18,6 +18,7 @@ The normalizer is designed to handle:
 """
 
 import re
+import logging
 from typing import Any, Dict, List, Optional
 
 from .canonical_models import (
@@ -27,6 +28,8 @@ from .canonical_models import (
     DataType,
     ParameterLocation,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class Normalizer:
@@ -285,6 +288,23 @@ class Normalizer:
             required = param.get("required", False)
             description = param.get("description", "")
 
+            # Validate parameter name
+            if not name or not name.strip():
+                logger.warning(
+                    f"Skipping parameter with empty name. Location: {location}, "
+                    f"Description: {description[:50] if description else 'N/A'}"
+                )
+                continue
+
+            # Normalize the name and validate it's not empty after normalization
+            normalized_name = self._to_snake_case(name)
+            if not normalized_name:
+                logger.warning(
+                    f"Skipping parameter '{name}' - name became empty after normalization. "
+                    f"Location: {location}"
+                )
+                continue
+
             # Extract type from schema (OpenAPI 3.x) or directly (Swagger 2.x)
             param_type = DataType.STRING  # Default
             default_value = None
@@ -306,17 +326,23 @@ class Normalizer:
                 location, ParameterLocation.QUERY
             )
 
-            normalized.append(
-                CanonicalParameter(
-                    name=self._to_snake_case(name),
-                    location=normalized_location,
-                    type=param_type,
-                    required=required,
-                    description=description or None,
-                    default=default_value,
-                    example=example_value,
+            # Create parameter (wrap in try-catch for additional safety)
+            try:
+                normalized.append(
+                    CanonicalParameter(
+                        name=normalized_name,
+                        location=normalized_location,
+                        type=param_type,
+                        required=required,
+                        description=description or None,
+                        default=default_value,
+                        example=example_value,
+                    )
                 )
-            )
+            except Exception as e:
+                logger.warning(
+                    f"Skipping invalid parameter '{name}' (normalized: '{normalized_name}'): {e}"
+                )
 
         return normalized
 

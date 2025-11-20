@@ -16,7 +16,7 @@ from .auth import (
 )
 from .executor import APIExecutor, ExecutionResult
 from .request_builder import RequestBuilder
-from .response import ResponseProcessor
+from .response import ResponseProcessor, ProcessedResponse
 
 __all__ = [
     "AuthHandler",
@@ -29,4 +29,5 @@ __all__ = [
     "ExecutionResult",
     "RequestBuilder",
     "ResponseProcessor",
+    "ProcessedResponse",
 ]

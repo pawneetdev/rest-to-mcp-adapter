@@ -66,6 +66,35 @@ The **MCP server layer** provides:
 - ❌ Extended loaders: Postman/GraphQL (Phase 6)
 - ❌ Recursive HTML crawling (Phase 7)
 
+## ⚠️ Known Limitations
+
+### MCP Tool Name Length (64 Characters)
+
+Claude's MCP protocol enforces a **strict 64-character limit** on tool names. This can affect APIs with deeply nested or verbose endpoint paths.
+
+**Automatic Handling**: The adapter intelligently truncates long names by:
+- Removing version numbers (v1, v2, v3)
+- Removing common API keywords (api, sapi, rest)
+- Preserving the HTTP method and key path components
+- Maintaining readability while staying within the limit
+
+**Example**:
+```
+Original: binance_delete_sapi_v1_sub_account_sub_account_api_ip_restriction_ip_list (73 chars)
+Truncated: binance_delete_sub_account_sub_account_ip_restriction_ip_list (64 chars)
+```
+
+**Impact**:
+- ✅ **Most APIs**: No impact - names are typically under 64 characters
+- ⚠️ **Large APIs** (Binance, AWS, etc.): Some names may be automatically truncated
+- 📝 **Full paths preserved**: Original paths remain in `tool.metadata["path"]`
+
+See [LIBRARY_USAGE.md](LIBRARY_USAGE.md#important-limitations-and-considerations) for details on checking your API.
+
+### OpenAPI $ref Dereferencing
+
+The adapter automatically resolves OpenAPI `$ref` pointers. Specs with circular references may fail to load in strict mode but will continue with a warning in non-strict mode.
+
 ## 📦 Installation
 
 ### Using uv (Recommended)
