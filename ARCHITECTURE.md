@@ -126,25 +126,29 @@ export_json(path: str)
 - Routes parameters to correct locations (path/query/header/body)
 - Validates required parameters
 
-#### AuthHandler (`adapter/runtime/auth/`)
+#### AuthHandler (`adapter/runtime/auth.py`)
 - **NoAuth**: For public endpoints
 - **APIKeyAuth**: API key in header or query
 - **BearerAuth**: Bearer token authentication
 - **BasicAuth**: HTTP basic authentication
 - **OAuth2Auth**: OAuth2 token flow
 
+All authentication handlers are consolidated in a single `auth.py` module.
+
 **Custom Auth Example**:
 ```python
+from adapter.runtime import AuthHandler
+
 class CustomAuth(AuthHandler):
     def apply(self, headers: dict, params: dict) -> None:
         # Add your auth logic
         headers["X-Custom-Auth"] = "value"
 ```
 
-#### ResponseProcessor (`adapter/runtime/response_processor.py`)
-- Parses API responses
-- Extracts data based on content type
-- Normalizes error messages
+#### Response Models (`adapter/runtime/response.py`)
+- Response model classes
+- Execution result classes
+- Response parsing and data extraction
 
 ---
 
@@ -154,7 +158,7 @@ class CustomAuth(AuthHandler):
 
 **Components**:
 
-#### MCPServer (`adapter/server/mcp_server.py`)
+#### MCPServer (`adapter/server/server.py`)
 - Implements JSON-RPC 2.0 protocol
 - Handles stdio transport
 - Implements `tools/list` and `tools/call` endpoints
@@ -240,19 +244,13 @@ adapter/
 ├── runtime/                # Phase 3: Execution
 │   ├── executor.py         # API executor
 │   ├── request_builder.py  # Request construction
-│   ├── response_processor.py # Response parsing
-│   └── auth/               # Authentication handlers
-│       ├── auth_handler.py
-│       ├── api_key_auth.py
-│       ├── bearer_auth.py
-│       ├── basic_auth.py
-│       └── oauth2_auth.py
+│   ├── response.py         # Response models and processing
+│   └── auth.py             # All authentication handlers
 ├── server/                 # Phase 4: MCP server
-│   ├── mcp_server.py       # Main server
+│   ├── server.py           # Main MCP server
 │   ├── tool_provider.py    # Tool discovery
 │   ├── execution_handler.py # Tool execution
-│   └── transport/
-│       └── stdio_transport.py # stdio communication
+│   └── transport.py        # stdio transport
 └── pipeline/               # Convenience helpers
     └── ingestion_pipeline.py
 ```
@@ -523,4 +521,4 @@ When proposing architectural changes:
 
 ---
 
-**For questions or discussions**: [GitHub Discussions](https://github.com/your-username/rest-to-mcp-adapter/discussions)
+**For questions or discussions**: [GitHub Discussions](https://github.com/pawneetdev/rest-to-mcp-adapter/discussions)

@@ -62,7 +62,7 @@ server.run()  # Claude can now use your API!
 ### From Source (Recommended for now)
 
 ```bash
-git clone https://github.com/your-username/rest-to-mcp-adapter.git
+git clone https://github.com/pawneetdev/rest-to-mcp-adapter.git
 cd rest-to-mcp-adapter
 pip install -e .
 ```
@@ -603,8 +603,8 @@ MIT License - see [LICENSE](LICENSE) file for details.
 
 ## 🙋 Support
 
-- **Issues**: [GitHub Issues](https://github.com/your-username/rest-to-mcp-adapter/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/your-username/rest-to-mcp-adapter/discussions)
+- **Issues**: [GitHub Issues](https://github.com/pawneetdev/rest-to-mcp-adapter/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/pawneetdev/rest-to-mcp-adapter/discussions)
 
 ---
 
