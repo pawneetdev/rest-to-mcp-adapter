@@ -1,15 +1,15 @@
 [project]
 name = "rest-to-mcp-adapter"
 version = "0.1.0"
-description = "Convert OpenAPI/REST specifications into MCP (Model Context Protocol) tools for AI agents"
+description = "Convert REST API specifications (OpenAPI 3.x, Swagger 2.x, OpenAPI Actions) into MCP tools for AI agents. Supports JSON and YAML formats."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "Pawneet Singh", email = "pawneet@example.com"}
+    {name = "Pawneet Singh", email = "pawneet.dev@gmail.com"}
 ]
 maintainers = [
-    {name = "Pawneet Singh", email = "pawneet@example.com"}
+    {name = "Pawneet Singh", email = "pawneet.dev@gmail.com"}
 ]
 keywords = [
     "mcp",
@@ -17,14 +17,20 @@ keywords = [
     "rest",
     "api",
     "openapi",
+    "openapi3",
     "swagger",
+    "swagger2",
+    "openapi-actions",
+    "json",
+    "yaml",
     "llm",
     "ai-tools",
     "anthropic",
     "claude",
     "gpt",
     "api-adapter",
-    "rest-to-mcp"
+    "rest-to-mcp",
+    "api-specification"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

@@ -1,8 +1,13 @@
 # REST-to-MCP Adapter
 
-**A Python library for converting OpenAPI specifications into MCP (Model Context Protocol) tools for AI agents.**
+**A Python library for converting REST API specifications into MCP (Model Context Protocol) tools for AI agents.**
 
-Transform any REST API with an OpenAPI/Swagger specification into tools that Claude, GPT, and other LLM-powered agents can use.
+Transform any REST API specification into tools that Claude, GPT, and other LLM-powered agents can use.
+
+**Supported Formats:**
+- OpenAPI 3.x (JSON, YAML)
+- Swagger 2.x (JSON, YAML)
+- OpenAPI Actions format (JSON)
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -94,10 +99,11 @@ Core dependencies (automatically installed):
 
 ## ✨ Key Features
 
-### 🔄 OpenAPI Ingestion
-- **Load from anywhere**: URL, file path, or raw JSON/YAML
-- **Full spec support**: OpenAPI 3.x and Swagger 2.x
-- **Auto-detection**: Automatically determines input type
+### 🔄 Specification Ingestion
+- **Multiple formats**: OpenAPI 3.x, Swagger 2.x, OpenAPI Actions
+- **JSON & YAML**: Full support for both formats
+- **Load from anywhere**: URL, file path, or raw content
+- **Auto-detection**: Automatically determines input type and format
 - **$ref dereferencing**: Resolves all JSON pointer references
 
 ### 🛠️ MCP Tool Generation
@@ -128,20 +134,31 @@ Core dependencies (automatically installed):
 
 ## 📖 Detailed Usage
 
-### 1. Loading OpenAPI Specifications
+### 1. Loading API Specifications
+
+The library supports multiple specification formats with automatic detection:
 
 ```python
 from adapter import OpenAPILoader
 
 loader = OpenAPILoader()
 
-# From URL
+# OpenAPI 3.x (JSON)
 spec = loader.load("https://api.example.com/openapi.json")
 
-# From file
-spec = loader.load("./specs/api.yaml")
+# OpenAPI 3.x (YAML)
+spec = loader.load("./specs/openapi.yaml")
 
-# From raw content
+# Swagger 2.x (JSON)
+spec = loader.load("./specs/swagger.json")
+
+# Swagger 2.x (YAML)
+spec = loader.load("https://api.example.com/swagger.yaml")
+
+# OpenAPI Actions format
+spec = loader.load("./specs/actions.json")
+
+# From raw YAML content
 yaml_content = """
 openapi: 3.0.0
 info:
@@ -154,8 +171,13 @@ paths:
 """
 spec = loader.load(yaml_content)
 
+# From raw JSON content
+json_content = '{"openapi": "3.0.0", "info": {"title": "My API"}}'
+spec = loader.load(json_content)
+
 # Auto-detection works for all methods
-spec = loader.load(source)  # Detects URL, file, or content automatically
+# Automatically detects: URL vs file vs content, JSON vs YAML, OpenAPI vs Swagger
+spec = loader.load(source)
 ```
 
 ### 2. Normalizing to Canonical Format
