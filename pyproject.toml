@@ -1,14 +1,37 @@
 [project]
 name = "rest-to-mcp-adapter"
 version = "0.1.0"
-description = "Universal REST → MCP Adapter: Convert REST API documentation into MCP-compatible tools"
+description = "Convert REST API specifications (OpenAPI 3.x, Swagger 2.x, OpenAPI Actions) into MCP tools for AI agents. Supports JSON and YAML formats."
 readme = "README.md"
 requires-python = ">=3.10"
 license = {text = "MIT"}
 authors = [
-    {name = "REST-to-MCP Contributors"}
+    {name = "Pawneet Singh", email = "pawneet.dev@gmail.com"}
 ]
-keywords = ["mcp", "rest", "api", "openapi", "llm", "tools", "anthropic", "claude"]
+maintainers = [
+    {name = "Pawneet Singh", email = "pawneet.dev@gmail.com"}
+]
+keywords = [
+    "mcp",
+    "model-context-protocol",
+    "rest",
+    "api",
+    "openapi",
+    "openapi3",
+    "swagger",
+    "swagger2",
+    "openapi-actions",
+    "json",
+    "yaml",
+    "llm",
+    "ai-tools",
+    "anthropic",
+    "claude",
+    "gpt",
+    "api-adapter",
+    "rest-to-mcp",
+    "api-specification"
+]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -17,14 +40,28 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Code Generators",
+    "Topic :: Internet :: WWW/HTTP",
+    "Operating System :: OS Independent",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2",
 ]
+
 dependencies = [
     "pydantic>=2.0.0",
     "pyyaml>=6.0",
     "langchain-community>=0.0.20",
     "requests>=2.31.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/pawneetdev/rest-to-mcp-adapter"
+Documentation = "https://github.com/pawneetdev/rest-to-mcp-adapter#readme"
+Repository = "https://github.com/pawneetdev/rest-to-mcp-adapter"
+Issues = "https://github.com/pawneetdev/rest-to-mcp-adapter/issues"
+Changelog = "https://github.com/pawneetdev/rest-to-mcp-adapter/releases"
 
 [project.optional-dependencies]
 dev = [
