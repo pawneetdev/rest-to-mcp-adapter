@@ -497,80 +497,15 @@ For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 📚 Examples
 
-### Complete Example: Building a Binance MCP Server
-
-**Note**: This is a simplified example showing the core workflow. For a production-ready implementation, see the [Binance MCP repository](https://github.com/pawneetdev/binance-mcp) which includes:
-- Complete `BinanceAuth` handler with HMAC-SHA256 signing
-- Environment variable and config file credential management
-- Comprehensive error handling and retry logic
-- Ready-to-use Claude Desktop configuration
-- Step-by-step deployment instructions
-
-```python
-#!/usr/bin/env python3
-"""Binance API MCP Server"""
-from adapter import (
-    OpenAPILoader, Normalizer, ToolGenerator,
-    ToolRegistry, APIExecutor, MCPServer
-)
-from my_auth import BinanceAuth  # Your custom auth handler
-
-# 1. Load Binance OpenAPI spec
-loader = OpenAPILoader()
-spec = loader.load(
-    "https://raw.githubusercontent.com/binance/binance-api-swagger/master/spot_api.yaml"
-)
-
-# 2. Auto-detect auth parameters
-auto_detected = loader.extract_auth_parameters(spec)
-
-# 3. Normalize endpoints
-normalizer = Normalizer()
-endpoints = normalizer.normalize_openapi(spec)
-print(f"Loaded {len(endpoints)} endpoints")
-
-# 4. Generate tools with auth filtering
-generator = ToolGenerator(
-    api_name="binance",
-    auto_detected_auth_params=auto_detected
-)
-tools = generator.generate_tools(endpoints)
-
-# 5. Create registry
-registry = ToolRegistry(name="Binance Spot API")
-registry.add_tools(tools)
-
-# 6. Set up executor with custom auth
-executor = APIExecutor(
-    base_url="https://api.binance.com",
-    auth=BinanceAuth(
-        api_key="your-key",
-        api_secret="your-secret"
-    )
-)
-
-# 7. Create and run MCP server
-server = MCPServer(
-    name="Binance MCP Server",
-    version="1.0.0",
-    tool_registry=registry,
-    executor=executor,
-    endpoints=endpoints
-)
-
-if __name__ == "__main__":
-    server.run()
-```
-
-### More Examples
-
 See the `examples/` directory for library usage patterns:
 - `examples/basic_usage.py` - Basic ingestion and normalization
 - `examples/phase2_tool_generation.py` - Tool generation examples
 - `examples/phase3_execution.py` - API execution examples
 - `examples/phase4_mcp_server.py` - MCP server setup
 
-For complete production implementations, see the [Real-World Integrations](#-real-world-integrations) section below.
+### Production Examples
+
+For complete, production-ready MCP server implementations, see the [Real-World Integrations](#-real-world-integrations) section below.
 
 ---
 
