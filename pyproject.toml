@@ -1,6 +1,6 @@
 [project]
 name = "rest-to-mcp-adapter"
-version = "0.1.0"
+version = "0.1.1"
 description = "Convert REST API specifications (OpenAPI 3.x, Swagger 2.x, OpenAPI Actions) into MCP tools for AI agents. Supports JSON and YAML formats."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -63,6 +63,7 @@ Repository = "https://github.com/pawneetdev/rest-to-mcp-adapter"
 Issues = "https://github.com/pawneetdev/rest-to-mcp-adapter/issues"
 Changelog = "https://github.com/pawneetdev/rest-to-mcp-adapter/releases"
 
+[build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
