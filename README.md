@@ -530,15 +530,7 @@ For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 ## 📚 Examples
 
-See the `examples/` directory for library usage patterns:
-- `examples/basic_usage.py` - Basic ingestion and normalization
-- `examples/phase2_tool_generation.py` - Tool generation examples
-- `examples/phase3_execution.py` - API execution examples
-- `examples/phase4_mcp_server.py` - MCP server setup
-
-### Production Examples
-
-For complete, production-ready MCP server implementations, see the [Real-World Integrations](#-real-world-integrations) section below.
+For complete, production-ready MCP server implementations with full source code, see the [Real-World Integrations](#-real-world-integrations) section below.
 
 ---
 

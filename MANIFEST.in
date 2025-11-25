@@ -4,6 +4,5 @@ include pyproject.toml
 include ARCHITECTURE.md
 
 recursive-include adapter *.py
-recursive-include examples *.py
 recursive-exclude * __pycache__
 recursive-exclude * *.py[co]
