@@ -11,6 +11,9 @@ Transform any REST API specification into tools that Claude, GPT, and other LLM-
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PyPI version](https://badge.fury.io/py/rest-to-mcp-adapter.svg)](https://pypi.org/project/rest-to-mcp-adapter/)
+
+> **⚠️ Beta Status**: This library is currently in beta (v0.1.0). The core functionality is stable and production-ready, but the API may evolve based on community feedback. We welcome early adopters and contributors!
 
 ---
 
@@ -64,27 +67,18 @@ server.run()  # Claude can now use your API!
 
 ## 📦 Installation
 
-### From PyPI
+### From PyPI (Recommended)
 
 ```bash
 pip install rest-to-mcp-adapter
 ```
 
-### From Source
+### From Source (For Development)
 
 ```bash
 git clone https://github.com/pawneetdev/rest-to-mcp-adapter.git
 cd rest-to-mcp-adapter
 pip install -e .
-```
-
-### Development Installation
-
-```bash
-# Clone and install with development dependencies
-git clone https://github.com/pawneetdev/rest-to-mcp-adapter.git
-cd rest-to-mcp-adapter
-pip install -e ".[dev]"
 ```
 
 ### Dependencies
@@ -652,13 +646,66 @@ pytest tests/test_tool_generator.py
 
 ## 🤝 Contributing
 
-Contributions welcome! The core library is complete, and we're looking for:
+We welcome contributions from the community! Whether you're fixing bugs, adding features, or improving documentation, your help is appreciated.
 
-- Additional authentication methods
-- Performance optimizations
-- More loaders (Postman collections, GraphQL schemas)
-- Documentation improvements
-- Real-world usage examples
+### How to Contribute
+
+1. **Fork the repository** on GitHub
+2. **Clone your fork** locally:
+   ```bash
+   git clone https://github.com/your-username/rest-to-mcp-adapter.git
+   cd rest-to-mcp-adapter
+   ```
+3. **Create a branch** for your changes:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+4. **Install development dependencies**:
+   ```bash
+   pip install -e .
+   pip install pytest pytest-cov black ruff
+   ```
+5. **Make your changes** and ensure tests pass:
+   ```bash
+   pytest
+   ```
+6. **Format your code**:
+   ```bash
+   black .
+   ruff check .
+   ```
+7. **Commit and push** your changes:
+   ```bash
+   git add .
+   git commit -m "Description of your changes"
+   git push origin feature/your-feature-name
+   ```
+8. **Open a Pull Request** on GitHub
+
+### Areas We're Looking For Help
+
+- **Additional authentication methods** (OAuth2 flows, custom schemes)
+- **Performance optimizations** (caching, parallel processing)
+- **More loaders** (Postman collections, GraphQL schemas, API Blueprint)
+- **Documentation improvements** (tutorials, examples, API docs)
+- **Real-world usage examples** (new MCP server implementations)
+- **Testing** (edge cases, integration tests, CI/CD improvements)
+
+### Development Guidelines
+
+- Follow existing code style and patterns
+- Add tests for new features
+- Update documentation as needed
+- Keep changes focused and atomic
+- Write clear commit messages
+
+### Reporting Issues
+
+Found a bug or have a feature request? Please [open an issue](https://github.com/pawneetdev/rest-to-mcp-adapter/issues) with:
+- Clear description of the problem/feature
+- Steps to reproduce (for bugs)
+- Expected vs actual behavior
+- Relevant code snippets or examples
 
 ---
 
@@ -673,6 +720,19 @@ Copyright (c) 2025 Pawneet Singh
 ## 🙋 Support
 
 - **Issues**: [GitHub Issues](https://github.com/pawneetdev/rest-to-mcp-adapter/issues)
+- **PyPI Package**: [rest-to-mcp-adapter](https://pypi.org/project/rest-to-mcp-adapter/)
+
+---
+
+## 🙏 Acknowledgments
+
+This library was developed with significant assistance from **Claude** (Anthropic), an AI assistant that helped with:
+- Architecture design and implementation
+- Code review and optimization
+- Documentation and examples
+- Testing and debugging
+
+Special thanks to the AI agent and MCP communities for inspiration and feedback.
 
 ---
 
