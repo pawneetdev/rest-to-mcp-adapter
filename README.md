@@ -134,6 +134,14 @@ Core dependencies (automatically installed):
 
 ## 📖 Detailed Usage
 
+> **💡 Looking for advanced features?** See [LIBRARY_USAGE.md](LIBRARY_USAGE.md) for:
+> - Advanced tool generation patterns
+> - Registry operations (search, filter, export/import)
+> - Batch API calls
+> - Integration patterns and best practices
+> - Troubleshooting guide
+> - Important limitations (64-char tool name limit, etc.)
+
 ### 1. Loading API Specifications
 
 The library supports multiple specification formats with automatic detection:

@@ -2,6 +2,7 @@ include README.md
 include LICENSE
 include pyproject.toml
 include ARCHITECTURE.md
+include LIBRARY_USAGE.md
 
 recursive-include adapter *.py
 recursive-exclude * __pycache__
