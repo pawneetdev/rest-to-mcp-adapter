@@ -114,6 +114,60 @@ Examples:
 - `0.1.0` → `0.2.0`: New feature
 - `0.9.0` → `1.0.0`: First stable release
 
+### Pre-release Versions (Beta, Alpha, RC)
+
+Python packaging supports pre-release versions following [PEP 440](https://peps.python.org/pep-0440/):
+
+**Beta versions** (feature complete, testing phase):
+```
+0.2.0b1  # Beta 1
+0.2.0b2  # Beta 2
+1.0.0b1  # Beta for version 1.0.0
+```
+
+**Alpha versions** (early testing, incomplete features):
+```
+0.2.0a1  # Alpha 1
+0.2.0a2  # Alpha 2
+```
+
+**Release candidates** (final testing before stable):
+```
+0.2.0rc1  # Release candidate 1
+0.2.0rc2  # Release candidate 2
+```
+
+**Development/unstable** (work in progress):
+```
+0.2.0.dev1  # Development build 1
+0.2.0.dev2  # Development build 2
+```
+
+**Version progression example**:
+```
+0.1.1           # Current stable
+0.2.0.dev1      # Development/unstable
+0.2.0a1         # Alpha 1
+0.2.0b1         # Beta 1 (current version)
+0.2.0b2         # Beta 2 (bug fixes)
+0.2.0rc1        # Release candidate 1
+0.2.0           # Stable release
+```
+
+**How users install pre-releases**:
+```bash
+# Regular install (skips pre-releases)
+pip install rest-to-mcp-adapter
+
+# Install latest including pre-releases
+pip install --pre rest-to-mcp-adapter
+
+# Install specific pre-release version
+pip install rest-to-mcp-adapter==0.2.0b1
+```
+
+**Note**: By default, pip will skip pre-release versions unless users explicitly use `--pre` flag or specify the exact version.
+
 ### Release Workflow
 
 1. **Update version** in `pyproject.toml`

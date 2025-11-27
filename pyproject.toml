@@ -1,6 +1,6 @@
 [project]
 name = "rest-to-mcp-adapter"
-version = "0.1.1"
+version = "0.2.0b1"
 description = "Convert REST API specifications (OpenAPI 3.x, Swagger 2.x, OpenAPI Actions) into MCP tools for AI agents. Supports JSON and YAML formats."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -52,8 +52,12 @@ classifiers = [
 dependencies = [
     "pydantic>=2.0.0",
     "pyyaml>=6.0",
-    "langchain-community>=0.0.20",
     "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+langchain = [
+    "langchain-community>=0.0.20",
 ]
 
 [project.urls]

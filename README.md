@@ -52,10 +52,24 @@ For advanced usage and individual step control, see [Detailed Usage](#-detailed-
 
 ## 📦 Installation
 
-### From PyPI (Recommended)
+### Stable Release
 
 ```bash
 pip install rest-to-mcp-adapter
+```
+
+### Beta Release (Latest Features)
+
+To install the latest beta version with cutting-edge features:
+
+```bash
+pip install --pre rest-to-mcp-adapter
+```
+
+Or install a specific beta version:
+
+```bash
+pip install rest-to-mcp-adapter==0.2.0b1
 ```
 
 ### From Source (For Development)
@@ -72,7 +86,9 @@ Core dependencies (automatically installed):
 - `pydantic>=2.0.0` - Data validation and modeling
 - `pyyaml>=6.0` - YAML parsing
 - `requests>=2.31.0` - HTTP client
-- `langchain-community>=0.0.20` - MCP protocol support
+
+Optional dependencies:
+- `langchain-community>=0.0.20` - Enhanced OpenAPI validation (install with: `pip install rest-to-mcp-adapter[langchain]`)
 
 ---
 
