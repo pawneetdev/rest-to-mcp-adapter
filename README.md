@@ -19,58 +19,57 @@ Transform any REST API specification into tools that Claude, GPT, and other LLM-
 
 ## 🚀 Quick Start
 
+### Simple Approach (Recommended for Most Users)
+
 ```python
-from adapter import (
-    OpenAPILoader,
-    Normalizer,
-    ToolGenerator,
-    ToolRegistry,
-    APIExecutor,
-    BearerAuth,
-    MCPServer
+from adapter import ToolRegistry, MCPServer, APIExecutor, BearerAuth
+
+# Create registry from OpenAPI spec (includes endpoints)
+registry = ToolRegistry.create_from_openapi(
+    "https://api.example.com/openapi.json"
 )
 
-# 1. Load OpenAPI spec
-loader = OpenAPILoader()
-spec = loader.load("https://api.example.com/openapi.json")
-
-# 2. Normalize to canonical format
-normalizer = Normalizer()
-endpoints = normalizer.normalize_openapi(spec)
-
-# 3. Generate MCP tools (auth params auto-filtered!)
-generator = ToolGenerator(api_name="myapi")
-tools = generator.generate_tools(endpoints)
-
-# 4. Create tool registry
-registry = ToolRegistry(name="My API")
-registry.add_tools(tools)
-
-# 5. Set up API executor with authentication
+# Set up executor
 executor = APIExecutor(
     base_url="https://api.example.com",
     auth=BearerAuth(token="your-token")
 )
 
-# 6. Start MCP server (for Claude Desktop, etc.)
+# Create server - endpoints are in the registry!
 server = MCPServer(
     name="My API Server",
     version="1.0.0",
     tool_registry=registry,
-    executor=executor,
-    endpoints=endpoints
+    executor=executor
+    # No endpoints parameter needed!
 )
-server.run()  # Claude can now use your API!
+server.run()
 ```
+
+For advanced usage and individual step control, see [Detailed Usage](#-detailed-usage) below.
 
 ---
 
 ## 📦 Installation
 
-### From PyPI (Recommended)
+### Stable Release
 
 ```bash
 pip install rest-to-mcp-adapter
+```
+
+### Beta Release (Latest Features)
+
+To install the latest beta version with cutting-edge features:
+
+```bash
+pip install --pre rest-to-mcp-adapter
+```
+
+Or install a specific beta version:
+
+```bash
+pip install rest-to-mcp-adapter==0.2.0b1
 ```
 
 ### From Source (For Development)
@@ -87,7 +86,9 @@ Core dependencies (automatically installed):
 - `pydantic>=2.0.0` - Data validation and modeling
 - `pyyaml>=6.0` - YAML parsing
 - `requests>=2.31.0` - HTTP client
-- `langchain-community>=0.0.20` - MCP protocol support
+
+Optional dependencies:
+- `langchain-community>=0.0.20` - Enhanced OpenAPI validation (install with: `pip install rest-to-mcp-adapter[langchain]`)
 
 ---
 
@@ -385,13 +386,24 @@ else:
 ```python
 from adapter import MCPServer
 
-# Create server (combines registry + executor + endpoints)
+# Option 1: With create_from_openapi (recommended)
+registry = ToolRegistry.create_from_openapi("https://api.example.com/openapi.json")
+executor = APIExecutor(base_url="https://api.example.com", auth=BearerAuth(token="token"))
+
+server = MCPServer(
+    name="My API Server",
+    version="1.0.0",
+    tool_registry=registry,  # Endpoints included automatically
+    executor=executor
+)
+
+# Option 2: Manual with explicit endpoints (backward compatible)
 server = MCPServer(
     name="My API Server",
     version="1.0.0",
     tool_registry=registry,
     executor=executor,
-    endpoints=endpoints
+    endpoints=endpoints  # Optional if registry has endpoints
 )
 
 # Run server (stdio transport for Claude Desktop)
@@ -515,7 +527,7 @@ Normalizer → Converts to CanonicalEndpoint models
     ↓
 ToolGenerator → Creates MCP tool definitions
     ↓
-ToolRegistry → Organizes and manages tools
+ToolRegistry → Stores tools and endpoints
     ↓
 MCPServer → Exposes tools via JSON-RPC (stdio)
     ↓
@@ -527,12 +539,6 @@ Response → Returns to agent
 ```
 
 For detailed architecture documentation, see [ARCHITECTURE.md](ARCHITECTURE.md).
-
----
-
-## 📚 Examples
-
-For complete, production-ready MCP server implementations with full source code, see the [Real-World Integrations](#-real-world-integrations) section below.
 
 ---
 
@@ -635,12 +641,12 @@ pytest tests/test_tool_generator.py
 
 ## 🛣️ Roadmap
 
-- ✅ **Phase 1**: OpenAPI ingestion and normalization
-- ✅ **Phase 2**: MCP tool generation
-- ✅ **Phase 3**: Runtime execution engine
-- ✅ **Phase 4**: MCP server implementation
-- 🔄 **Phase 5**: Additional loaders (Postman, GraphQL)
-- 📋 **Future**: WebSocket transport, enhanced caching
+- ✅ OpenAPI ingestion and normalization
+- ✅ MCP tool generation
+- ✅ Runtime execution engine
+- ✅ MCP server implementation
+- 🔄 Additional loaders (Postman, GraphQL)
+- 📋 WebSocket transport, enhanced caching
 
 ---
 

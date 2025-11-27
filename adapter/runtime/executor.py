@@ -59,8 +59,8 @@ class APIExecutor:
     """
     Executes REST API calls with authentication, retries, and error handling.
 
-    This is the main class for Phase 3 - it orchestrates all the components
-    to execute actual HTTP requests against REST APIs.
+    Orchestrates all the components to execute actual HTTP requests against
+    REST APIs.
 
     Features:
     - Build requests from canonical endpoints

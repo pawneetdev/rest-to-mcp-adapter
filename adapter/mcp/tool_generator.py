@@ -54,8 +54,8 @@ class ToolGenerator:
     """
     Generates MCP tool definitions from canonical endpoints.
 
-    This is the main class for Phase 2 - it takes normalized API endpoints
-    and converts them into MCP-compatible tool definitions.
+    Takes normalized API endpoints and converts them into MCP-compatible
+    tool definitions.
 
     Features:
     - Converts endpoint parameters to JSON Schema

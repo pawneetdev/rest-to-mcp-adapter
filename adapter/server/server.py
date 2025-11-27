@@ -6,7 +6,7 @@ between transport, tool provider, and execution handler.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from .transport import StdioTransport
 from .tool_provider import ToolProvider
@@ -19,14 +19,8 @@ class MCPServer:
     """
     MCP server implementation.
 
-    This is the main class for Phase 4 - it implements the MCP protocol
-    and exposes REST API tools to LLM agents like Claude.
-
-    The server integrates all previous phases:
-    - Phase 1: Uses canonical endpoints
-    - Phase 2: Uses MCP tool definitions
-    - Phase 3: Uses runtime executor for API calls
-    - Phase 4: Exposes everything via MCP protocol
+    Implements the MCP protocol and exposes REST API tools to LLM agents
+    like Claude.
 
     Protocol methods supported:
     - initialize: Server initialization handshake
@@ -40,25 +34,25 @@ class MCPServer:
         >>> from adapter.runtime import APIExecutor, BearerAuth
         >>> from adapter.server import MCPServer
         >>>
-        >>> # Phase 1: Load and normalize
+        >>> # Load and normalize
         >>> loader = OpenAPILoader()
         >>> spec = loader.load("https://api.example.com/openapi.json")
         >>> normalizer = Normalizer()
         >>> endpoints = normalizer.normalize_openapi(spec)
         >>>
-        >>> # Phase 2: Generate tools
+        >>> # Generate tools
         >>> generator = ToolGenerator(api_name="example")
         >>> tools = generator.generate_tools(endpoints)
         >>> registry = ToolRegistry(name="Example API")
         >>> registry.add_tools(tools)
         >>>
-        >>> # Phase 3: Set up executor
+        >>> # Set up executor
         >>> executor = APIExecutor(
         ...     base_url="https://api.example.com",
         ...     auth=BearerAuth(token="token")
         ... )
         >>>
-        >>> # Phase 4: Create and run MCP server
+        >>> # Create and run MCP server
         >>> server = MCPServer(
         ...     name="Example API MCP Server",
         ...     version="1.0.0",
@@ -75,7 +69,7 @@ class MCPServer:
         version: str,
         tool_registry,  # ToolRegistry
         executor,  # APIExecutor
-        endpoints: list,  # List[CanonicalEndpoint]
+        endpoints: Optional[list] = None,  # List[CanonicalEndpoint] - NOW OPTIONAL!
     ):
         """
         Initialize the MCP server.
@@ -83,12 +77,27 @@ class MCPServer:
         Args:
             name: Server name
             version: Server version
-            tool_registry: ToolRegistry from Phase 2
-            executor: APIExecutor from Phase 3
-            endpoints: List of CanonicalEndpoint from Phase 1
+            tool_registry: ToolRegistry (may contain endpoints)
+            executor: APIExecutor for making API calls
+            endpoints: Optional list of CanonicalEndpoint.
+                      If not provided, will be retrieved from tool_registry.
+
+        Raises:
+            ValueError: If endpoints not provided and registry doesn't contain endpoints
         """
         self.name = name
         self.version = version
+
+        # Get endpoints from registry if not provided
+        if endpoints is None:
+            if hasattr(tool_registry, 'get_all_endpoints') and tool_registry.has_endpoints():
+                endpoints = tool_registry.get_all_endpoints()
+                logger.info("Using endpoints from tool registry")
+            else:
+                raise ValueError(
+                    "No endpoints provided and registry doesn't contain endpoints. "
+                    "Either pass endpoints parameter or use ToolRegistry.create_from_openapi()."
+                )
 
         # Initialize components
         self.tool_provider = ToolProvider(tool_registry)

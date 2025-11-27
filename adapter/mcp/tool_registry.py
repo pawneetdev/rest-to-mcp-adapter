@@ -10,6 +10,7 @@ import re
 from typing import Any, Dict, List, Optional, Set, Pattern
 
 from .tool_generator import MCPTool
+from ..parsing.canonical_models import CanonicalEndpoint
 
 
 class ToolRegistry:
@@ -43,15 +44,20 @@ class ToolRegistry:
         ...     registry.export_json(f)
     """
 
-    def __init__(self, name: Optional[str] = None):
+    def __init__(self, name: Optional[str] = None, endpoints: Optional[List[CanonicalEndpoint]] = None):
         """
         Initialize the tool registry.
 
         Args:
             name: Optional name for the registry (e.g., API name)
+            endpoints: Optional list of canonical endpoints to store
         """
         self.name = name
         self._tools: Dict[str, MCPTool] = {}
+        self._endpoints: Dict[str, CanonicalEndpoint] = {}
+
+        if endpoints:
+            self.set_endpoints(endpoints)
 
     def add_tool(self, tool: MCPTool) -> None:
         """
@@ -501,3 +507,186 @@ class ToolRegistry:
         """String representation of the registry."""
         name_part = f"name='{self.name}', " if self.name else ""
         return f"ToolRegistry({name_part}tools={len(self._tools)})"
+
+    def set_endpoints(self, endpoints: List[CanonicalEndpoint]) -> None:
+        """
+        Store endpoints indexed by name for quick lookup.
+
+        Args:
+            endpoints: List of CanonicalEndpoint objects to store
+        """
+        self._endpoints = {ep.name: ep for ep in endpoints}
+
+    def get_endpoint(self, tool_name: str) -> Optional[CanonicalEndpoint]:
+        """
+        Get endpoint for a tool by name.
+
+        Handles both direct matches and API-prefixed tool names.
+
+        Args:
+            tool_name: Name of the tool
+
+        Returns:
+            CanonicalEndpoint if found, None otherwise
+
+        Examples:
+            >>> # Direct match
+            >>> registry.get_endpoint("get_users")
+
+            >>> # Prefixed match
+            >>> registry.get_endpoint("myapi_get_users")  # Finds "get_users"
+        """
+        # Try direct match first
+        if tool_name in self._endpoints:
+            return self._endpoints[tool_name]
+
+        # Try suffix match (for api_name prefixed tools)
+        for ep_name, endpoint in self._endpoints.items():
+            if tool_name.endswith(f"_{ep_name}"):
+                return endpoint
+
+        return None
+
+    def get_all_endpoints(self) -> List[CanonicalEndpoint]:
+        """
+        Get all stored endpoints.
+
+        Returns:
+            List of all CanonicalEndpoint objects
+        """
+        return list(self._endpoints.values())
+
+    def has_endpoints(self) -> bool:
+        """
+        Check if registry has endpoints stored.
+
+        Returns:
+            True if registry contains endpoints, False otherwise
+        """
+        return len(self._endpoints) > 0
+
+    @classmethod
+    def create_from_openapi(
+        cls,
+        source: str,
+        name: Optional[str] = None,
+        # Loader configuration
+        strict: bool = False,
+        use_langchain: bool = True,
+        # Generator configuration
+        api_name: Optional[str] = None,
+        include_metadata: bool = True,
+        group_parameters: bool = False,
+        auth_params: Optional[Set[str]] = None,
+        auto_detect_auth: bool = True,
+        # Filtering
+        limit: Optional[int] = None,
+        path_pattern: Optional[str] = None,
+        method_filter: Optional[str] = None,
+    ) -> "ToolRegistry":
+        """
+        Create a ToolRegistry from an OpenAPI specification in one step.
+
+        This convenience method combines all 4 phases of the workflow:
+        1. Load OpenAPI spec (OpenAPILoader)
+        2. Normalize to canonical format (Normalizer)
+        3. Generate MCP tools (ToolGenerator)
+        4. Create and populate registry
+
+        Args:
+            source: OpenAPI spec URL, file path, or raw JSON/YAML content
+
+            name: Optional registry name
+
+            # Loader configuration
+            strict: Enable strict validation (default: False)
+            use_langchain: Use LangChain utilities if available (default: True)
+
+            # Generator configuration
+            api_name: API name prefix for tool names (e.g., "github")
+            include_metadata: Include endpoint metadata in tools (default: True)
+            group_parameters: Group parameters by location (default: False)
+            auth_params: Custom auth parameter names to filter (overrides defaults)
+            auto_detect_auth: Auto-detect auth params from security schemes (default: True)
+
+            # Filtering
+            limit: Maximum number of tools to generate
+            path_pattern: Regex pattern to filter endpoints by path
+            method_filter: HTTP method filter (GET, POST, etc.)
+
+        Returns:
+            Fully populated ToolRegistry instance
+
+        Examples:
+            >>> # Simple usage
+            >>> registry = ToolRegistry.create_from_openapi(
+            ...     "https://api.example.com/openapi.json"
+            ... )
+
+            >>> # With configuration
+            >>> registry = ToolRegistry.create_from_openapi(
+            ...     source="./specs/api.yaml",
+            ...     name="My API",
+            ...     api_name="myapi",
+            ...     limit=50,
+            ...     method_filter="GET"
+            ... )
+
+            >>> # Custom auth detection
+            >>> registry = ToolRegistry.create_from_openapi(
+            ...     "https://api.example.com/openapi.json",
+            ...     auth_params={"x-custom-auth"},
+            ...     auto_detect_auth=False
+            ... )
+
+        Note:
+            For more control over individual steps, use the classes directly:
+
+            >>> loader = OpenAPILoader()
+            >>> spec = loader.load(source)
+            >>> normalizer = Normalizer()
+            >>> endpoints = normalizer.normalize_openapi(spec)
+            >>> generator = ToolGenerator(api_name=api_name)
+            >>> tools = generator.generate_tools(endpoints)
+            >>> registry = ToolRegistry(name=name)
+            >>> registry.add_tools(tools)
+        """
+        # Import here to avoid circular dependencies
+        from ..ingestion import OpenAPILoader
+        from ..parsing import Normalizer
+        from .tool_generator import ToolGenerator
+
+        # Load OpenAPI spec
+        loader = OpenAPILoader(strict=strict, use_langchain=use_langchain)
+        spec = loader.load(source)
+
+        # Auto-detect auth parameters if enabled
+        auto_detected_auth_params = None
+        if auto_detect_auth:
+            auto_detected_auth_params = loader.extract_auth_parameters(spec)
+
+        # Normalize to canonical format
+        normalizer = Normalizer()
+        endpoints = normalizer.normalize_openapi(spec)
+
+        # Generate MCP tools
+        generator = ToolGenerator(
+            api_name=api_name,
+            include_metadata=include_metadata,
+            group_parameters=group_parameters,
+            auth_params=auth_params,
+            auto_detected_auth_params=auto_detected_auth_params,
+        )
+
+        tools = generator.generate_tools(
+            endpoints=endpoints,
+            limit=limit,
+            path_pattern=path_pattern,
+            method_filter=method_filter,
+        )
+
+        # Create and populate registry with endpoints
+        registry = cls(name=name, endpoints=endpoints)
+        registry.add_tools(tools)
+
+        return registry

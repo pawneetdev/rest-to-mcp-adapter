@@ -12,6 +12,7 @@ This guide provides advanced usage patterns and comprehensive reference material
 - [Batch API Calls](#batch-api-calls)
 - [Authentication Parameter Filtering](#authentication-parameter-filtering)
 - [Complete Examples](#complete-examples)
+- [Convenience Methods](#convenience-methods)
 - [Integration Patterns](#integration-patterns)
 - [API Reference](#api-reference)
 - [Common Patterns](#common-patterns)
@@ -515,6 +516,79 @@ server = MCPServer(
 # Run the server
 server.run()
 ```
+
+## Convenience Methods
+
+### Quick Registry Creation
+
+For rapid prototyping and simple use cases, use the one-step convenience method:
+
+```python
+from adapter import ToolRegistry
+
+# Create registry in one line
+registry = ToolRegistry.create_from_openapi(
+    "https://api.example.com/openapi.json"
+)
+
+# With configuration
+registry = ToolRegistry.create_from_openapi(
+    source="./specs/api.yaml",
+    name="My API",
+    api_name="myapi",
+    limit=50,
+    method_filter="GET"
+)
+
+# Registry is ready to use
+print(f"Created {registry.count()} tools")
+registry.export_json("tools.json")
+```
+
+**When to use the convenience method:**
+- Quick prototyping and exploration
+- Simple use cases with minimal configuration
+- When you don't need access to intermediate objects (spec, endpoints, tools)
+
+**When to use individual classes:**
+- Complex workflows requiring intermediate processing
+- Custom normalization or filtering logic
+- Debugging or inspecting intermediate results
+- Advanced configuration at each phase
+- Reusing intermediate objects (spec, endpoints, tools)
+
+### Simplified Server Creation
+
+When using `create_from_openapi()`, you don't need to pass endpoints to MCPServer:
+
+```python
+from adapter import ToolRegistry, MCPServer, APIExecutor, BearerAuth
+
+# Create registry with endpoints stored internally
+registry = ToolRegistry.create_from_openapi("https://api.example.com/openapi.json")
+
+# Set up executor
+executor = APIExecutor(
+    base_url="https://api.example.com",
+    auth=BearerAuth(token="your-token")
+)
+
+# Create server - no endpoints parameter needed!
+server = MCPServer(
+    name="My API Server",
+    version="1.0.0",
+    tool_registry=registry,  # Contains endpoints
+    executor=executor
+    # endpoints parameter automatically retrieved from registry
+)
+server.run()
+```
+
+**How it works:**
+- `create_from_openapi()` stores endpoints in the registry
+- MCPServer checks if registry has endpoints
+- If found, uses them automatically
+- Backward compatible: explicit endpoints still work
 
 ## Integration Patterns
 

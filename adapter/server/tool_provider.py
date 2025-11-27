@@ -2,7 +2,7 @@
 Tool provider for MCP server.
 
 Manages the registry of available tools and provides tool discovery.
-Bridges Phase 2 (MCP tools) with the MCP server.
+Bridges MCP tool registry with the MCP server.
 """
 
 import logging
@@ -17,15 +17,14 @@ class ToolProvider:
     """
     Provides tool discovery and metadata for the MCP server.
 
-    This class bridges the gap between Phase 2 (tool generation) and
-    Phase 4 (MCP server). It takes a ToolRegistry and exposes tools
-    in the format expected by MCP clients.
+    Takes a ToolRegistry and exposes tools in the format expected by
+    MCP clients.
 
     Examples:
         >>> from adapter.mcp import ToolRegistry, ToolGenerator
         >>> from adapter.parsing import Normalizer
         >>>
-        >>> # Generate tools (Phase 2)
+        >>> # Generate tools
         >>> generator = ToolGenerator()
         >>> tools = generator.generate_tools(endpoints)
         >>> registry = ToolRegistry(name="My API")
@@ -41,7 +40,7 @@ class ToolProvider:
         Initialize the tool provider.
 
         Args:
-            tool_registry: ToolRegistry containing MCP tools from Phase 2
+            tool_registry: ToolRegistry containing MCP tools
         """
         self.registry = tool_registry
         logger.info(f"ToolProvider initialized with {tool_registry.count()} tools")

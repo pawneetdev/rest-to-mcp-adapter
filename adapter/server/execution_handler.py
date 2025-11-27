@@ -1,8 +1,7 @@
 """
 Execution handler for MCP server.
 
-Handles tool execution by integrating with Phase 3's runtime executor.
-Maps MCP tool calls to actual REST API requests.
+Handles tool execution by mapping MCP tool calls to actual REST API requests.
 """
 
 import logging
@@ -19,15 +18,14 @@ class ExecutionHandler:
     """
     Handles tool execution for the MCP server.
 
-    This class bridges Phase 3 (runtime execution) with Phase 4 (MCP server).
-    It takes tool execution requests from MCP clients and uses the APIExecutor
+    Takes tool execution requests from MCP clients and uses the APIExecutor
     to make actual REST API calls.
 
     Examples:
         >>> from adapter.runtime import APIExecutor, BearerAuth
         >>> from adapter.server import ToolProvider, ExecutionHandler
         >>>
-        >>> # Set up executor (Phase 3)
+        >>> # Set up executor
         >>> executor = APIExecutor(
         ...     base_url="https://api.example.com",
         ...     auth=BearerAuth(token="token")
@@ -37,7 +35,7 @@ class ExecutionHandler:
         >>> handler = ExecutionHandler(
         ...     tool_provider=provider,
         ...     executor=executor,
-        ...     endpoints=endpoints  # From Phase 1
+        ...     endpoints=endpoints
         ... )
         >>>
         >>> # Execute a tool
@@ -58,8 +56,8 @@ class ExecutionHandler:
 
         Args:
             tool_provider: ToolProvider for tool lookup
-            executor: APIExecutor from Phase 3 for making API calls
-            endpoints: List of CanonicalEndpoint objects from Phase 1
+            executor: APIExecutor for making API calls
+            endpoints: List of CanonicalEndpoint objects
         """
         self.tool_provider = tool_provider
         self.executor = executor
@@ -136,7 +134,7 @@ class ExecutionHandler:
             return self._create_error_result(error_msg)
 
         try:
-            # Execute the API call using Phase 3 executor
+            # Execute the API call
             result = self.executor.execute(
                 endpoint=endpoint, parameters=arguments
             )
@@ -158,7 +156,7 @@ class ExecutionHandler:
         Create a successful MCP result from an execution result.
 
         Args:
-            execution_result: ExecutionResult from Phase 3
+            execution_result: ExecutionResult from executor
 
         Returns:
             MCP-formatted success result
