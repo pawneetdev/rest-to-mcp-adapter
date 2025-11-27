@@ -557,6 +557,39 @@ registry.export_json("tools.json")
 - Advanced configuration at each phase
 - Reusing intermediate objects (spec, endpoints, tools)
 
+### Simplified Server Creation
+
+When using `from_openapi()`, you don't need to pass endpoints to MCPServer:
+
+```python
+from adapter import ToolRegistry, MCPServer, APIExecutor, BearerAuth
+
+# Create registry with endpoints stored internally
+registry = ToolRegistry.from_openapi("https://api.example.com/openapi.json")
+
+# Set up executor
+executor = APIExecutor(
+    base_url="https://api.example.com",
+    auth=BearerAuth(token="your-token")
+)
+
+# Create server - no endpoints parameter needed!
+server = MCPServer(
+    name="My API Server",
+    version="1.0.0",
+    tool_registry=registry,  # Contains endpoints
+    executor=executor
+    # endpoints parameter automatically retrieved from registry
+)
+server.run()
+```
+
+**How it works:**
+- `from_openapi()` stores endpoints in the registry
+- MCPServer checks if registry has endpoints
+- If found, uses them automatically
+- Backward compatible: explicit endpoints still work
+
 ## Integration Patterns
 
 ### Use with Claude Desktop

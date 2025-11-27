@@ -6,7 +6,7 @@ between transport, tool provider, and execution handler.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 
 from .transport import StdioTransport
 from .tool_provider import ToolProvider
@@ -75,7 +75,7 @@ class MCPServer:
         version: str,
         tool_registry,  # ToolRegistry
         executor,  # APIExecutor
-        endpoints: list,  # List[CanonicalEndpoint]
+        endpoints: Optional[list] = None,  # List[CanonicalEndpoint] - NOW OPTIONAL!
     ):
         """
         Initialize the MCP server.
@@ -83,12 +83,27 @@ class MCPServer:
         Args:
             name: Server name
             version: Server version
-            tool_registry: ToolRegistry from Phase 2
+            tool_registry: ToolRegistry from Phase 2 (may contain endpoints)
             executor: APIExecutor from Phase 3
-            endpoints: List of CanonicalEndpoint from Phase 1
+            endpoints: Optional list of CanonicalEndpoint from Phase 1.
+                      If not provided, will be retrieved from tool_registry.
+
+        Raises:
+            ValueError: If endpoints not provided and registry doesn't contain endpoints
         """
         self.name = name
         self.version = version
+
+        # Get endpoints from registry if not provided
+        if endpoints is None:
+            if hasattr(tool_registry, 'get_all_endpoints') and tool_registry.has_endpoints():
+                endpoints = tool_registry.get_all_endpoints()
+                logger.info("Using endpoints from tool registry")
+            else:
+                raise ValueError(
+                    "No endpoints provided and registry doesn't contain endpoints. "
+                    "Either pass endpoints parameter or use ToolRegistry.from_openapi()."
+                )
 
         # Initialize components
         self.tool_provider = ToolProvider(tool_registry)

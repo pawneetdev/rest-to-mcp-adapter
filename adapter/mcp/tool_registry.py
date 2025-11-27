@@ -10,6 +10,7 @@ import re
 from typing import Any, Dict, List, Optional, Set, Pattern
 
 from .tool_generator import MCPTool
+from ..parsing.canonical_models import CanonicalEndpoint
 
 
 class ToolRegistry:
@@ -43,15 +44,20 @@ class ToolRegistry:
         ...     registry.export_json(f)
     """
 
-    def __init__(self, name: Optional[str] = None):
+    def __init__(self, name: Optional[str] = None, endpoints: Optional[List[CanonicalEndpoint]] = None):
         """
         Initialize the tool registry.
 
         Args:
             name: Optional name for the registry (e.g., API name)
+            endpoints: Optional list of canonical endpoints to store
         """
         self.name = name
         self._tools: Dict[str, MCPTool] = {}
+        self._endpoints: Dict[str, CanonicalEndpoint] = {}
+
+        if endpoints:
+            self.set_endpoints(endpoints)
 
     def add_tool(self, tool: MCPTool) -> None:
         """
@@ -502,6 +508,63 @@ class ToolRegistry:
         name_part = f"name='{self.name}', " if self.name else ""
         return f"ToolRegistry({name_part}tools={len(self._tools)})"
 
+    def set_endpoints(self, endpoints: List[CanonicalEndpoint]) -> None:
+        """
+        Store endpoints indexed by name for quick lookup.
+
+        Args:
+            endpoints: List of CanonicalEndpoint objects to store
+        """
+        self._endpoints = {ep.name: ep for ep in endpoints}
+
+    def get_endpoint(self, tool_name: str) -> Optional[CanonicalEndpoint]:
+        """
+        Get endpoint for a tool by name.
+
+        Handles both direct matches and API-prefixed tool names.
+
+        Args:
+            tool_name: Name of the tool
+
+        Returns:
+            CanonicalEndpoint if found, None otherwise
+
+        Examples:
+            >>> # Direct match
+            >>> registry.get_endpoint("get_users")
+
+            >>> # Prefixed match
+            >>> registry.get_endpoint("myapi_get_users")  # Finds "get_users"
+        """
+        # Try direct match first
+        if tool_name in self._endpoints:
+            return self._endpoints[tool_name]
+
+        # Try suffix match (for api_name prefixed tools)
+        for ep_name, endpoint in self._endpoints.items():
+            if tool_name.endswith(f"_{ep_name}"):
+                return endpoint
+
+        return None
+
+    def get_all_endpoints(self) -> List[CanonicalEndpoint]:
+        """
+        Get all stored endpoints.
+
+        Returns:
+            List of all CanonicalEndpoint objects
+        """
+        return list(self._endpoints.values())
+
+    def has_endpoints(self) -> bool:
+        """
+        Check if registry has endpoints stored.
+
+        Returns:
+            True if registry contains endpoints, False otherwise
+        """
+        return len(self._endpoints) > 0
+
     @classmethod
     def from_openapi(
         cls,
@@ -622,8 +685,8 @@ class ToolRegistry:
             method_filter=method_filter,
         )
 
-        # Phase 4: Create and populate registry
-        registry = cls(name=name)
+        # Phase 4: Create and populate registry with endpoints
+        registry = cls(name=name, endpoints=endpoints)
         registry.add_tools(tools)
 
         return registry
