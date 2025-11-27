@@ -5,7 +5,7 @@ This document provides detailed technical information about the REST-to-MCP Adap
 ## Table of Contents
 
 - [System Overview](#system-overview)
-- [Phase Breakdown](#phase-breakdown)
+- [Component Breakdown](#component-breakdown)
 - [Canonical Data Model](#canonical-data-model)
 - [Directory Structure](#directory-structure)
 - [Design Decisions](#design-decisions)
@@ -15,25 +15,25 @@ This document provides detailed technical information about the REST-to-MCP Adap
 
 ## System Overview
 
-The REST-to-MCP Adapter follows a **pipeline architecture** with four distinct phases:
+The REST-to-MCP Adapter follows a **pipeline architecture** with four distinct stages:
 
 ```
-Phase 1: Ingestion & Normalization
+Ingestion & Normalization
     ↓
-Phase 2: MCP Tool Generation
+MCP Tool Generation
     ↓
-Phase 3: Runtime Execution
+Runtime Execution
     ↓
-Phase 4: MCP Server
+MCP Server
 ```
 
-Each phase is independent and can be used standalone or as part of the complete pipeline.
+Each stage is independent and can be used standalone or as part of the complete pipeline.
 
 ---
 
-## Phase Breakdown
+## Component Breakdown
 
-### Phase 1: Ingestion & Normalization
+### Ingestion & Normalization
 
 **Purpose**: Load API documentation from various sources and convert to a unified canonical format.
 
@@ -66,7 +66,7 @@ normalize_openapi(spec: Dict) -> List[CanonicalEndpoint]
 
 ---
 
-### Phase 2: MCP Tool Generation
+### MCP Tool Generation
 
 **Purpose**: Convert canonical endpoints into MCP-compatible tool definitions.
 
@@ -89,14 +89,17 @@ normalize_openapi(spec: Dict) -> List[CanonicalEndpoint]
 - Maps canonical types to JSON Schema types
 
 #### ToolRegistry (`adapter/mcp/tool_registry.py`)
-- Stores and manages MCP tools
+- Stores and manages MCP tools and endpoints
 - Provides search and filtering capabilities
 - Export/import functionality
+- Convenience method for creating from OpenAPI specs
 
 **Key Methods**:
 ```python
+create_from_openapi(source: str) -> ToolRegistry  # Convenience method
 add_tool(tool: MCPTool)
 get_tool(name: str) -> MCPTool
+get_endpoint(tool_name: str) -> CanonicalEndpoint
 get_tools_by_tag(tag: str) -> List[MCPTool]
 search_tools(query: str) -> List[MCPTool]
 export_json(path: str)
@@ -104,7 +107,7 @@ export_json(path: str)
 
 ---
 
-### Phase 3: Runtime Execution
+### Runtime Execution
 
 **Purpose**: Execute actual REST API calls from canonical endpoints.
 
@@ -152,7 +155,7 @@ class CustomAuth(AuthHandler):
 
 ---
 
-### Phase 4: MCP Server
+### MCP Server
 
 **Purpose**: Expose tools to AI agents via the Model Context Protocol.
 
@@ -231,22 +234,22 @@ class CanonicalSchema(BaseModel):
 
 ```
 adapter/
-├── ingestion/              # Phase 1: Loading API docs
+├── ingestion/              # Loading API docs
 │   ├── base_loader.py      # Abstract base class
 │   └── loader_openapi.py   # OpenAPI/Swagger loader
-├── parsing/                # Phase 1: Normalization
+├── parsing/                # Normalization
 │   ├── canonical_models.py # Pydantic models
 │   └── normalizer.py       # Conversion logic
-├── mcp/                    # Phase 2: Tool generation
+├── mcp/                    # Tool generation
 │   ├── tool_generator.py   # Main generator
 │   ├── schema_converter.py # Schema conversion
-│   └── tool_registry.py    # Tool storage
-├── runtime/                # Phase 3: Execution
+│   └── tool_registry.py    # Tool & endpoint storage
+├── runtime/                # Execution
 │   ├── executor.py         # API executor
 │   ├── request_builder.py  # Request construction
 │   ├── response.py         # Response models and processing
 │   └── auth.py             # All authentication handlers
-├── server/                 # Phase 4: MCP server
+├── server/                 # MCP server
 │   ├── server.py           # Main MCP server
 │   ├── tool_provider.py    # Tool discovery
 │   ├── execution_handler.py # Tool execution
@@ -288,7 +291,7 @@ spec = load_any(source)  # Magic! But which loader was used?
 **Rationale**:
 - **Separation of concerns**: Ingestion ≠ Tool generation
 - **Extensibility**: Easy to add new input formats
-- **Testing**: Each phase can be tested independently
+- **Testing**: Each stage can be tested independently
 - **Flexibility**: Users can inject custom endpoints
 
 ### Why Filter Auth Parameters?
@@ -513,7 +516,7 @@ def test_full_pipeline():
 
 When proposing architectural changes:
 
-1. **Maintain phase separation**: Keep phases independent
+1. **Maintain stage separation**: Keep stages independent
 2. **Preserve extensibility**: Use interfaces/base classes
 3. **Document decisions**: Update this file
 4. **Add tests**: Ensure backward compatibility
